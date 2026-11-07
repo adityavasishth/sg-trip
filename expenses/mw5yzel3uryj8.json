@@ -1,9 +1,9 @@
 {
  "id": "mw5yzel3uryj8",
- "title": "Lunch at casa bites",
- "amount": 122,
+ "title": "Cab from Zoo to Paradox",
+ "amount": 75.71,
  "currency": "SGD",
- "paidBy": "Aditya",
+ "paidBy": "Sayan",
  "split": {
   "Aditya": 1,
   "Garima": 1,
@@ -16,8 +16,8 @@
   "Shilp": 1
  },
  "date": "2026-11-06",
- "photo": null,
+ "photo": "photos/mw5yzel3uryj8-mw6e97zp.jpg",
  "createdAt": 1794029734551,
- "updatedAt": 1794045349372,
- "addedBy": "Aditya"
+ "updatedAt": 1794055389880,
+ "addedBy": "Sayan"
 }
