@@ -236,7 +236,9 @@ code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:.85em}
           <input id="f-photo" type="file" accept="image/*" hidden>
           <img id="f-thumb" class="thumb" alt="Receipt preview" hidden>
           <button type="button" class="link" id="f-photo-clear" hidden>Remove photo</button>
+          <button type="button" class="link" id="f-read" hidden>Read receipt</button>
         </div>
+        <p id="f-ocr" class="preview" hidden></p>
       </div>
       <button class="btn primary" id="f-save" type="submit">Save expense</button>
       <div class="btn-row" id="f-editbar" hidden>
@@ -295,7 +297,7 @@ const DEFAULT_CONFIG = {
 // ---------- state ----------
 const S = {
   token:null, me:null, config:null, configSha:null, expenses:[], treeSha:null,
-  view:'add', editing:null, cur:'SGD', split:new Set(), photoFile:null, photoRemoved:false,
+  view:'add', editing:null, cur:'SGD', split:new Set(), photoFile:null, photoB64:null, photoRemoved:false,
   busy:false, lastSync:null, draftPeople:null
 };
 
@@ -506,7 +508,7 @@ function renderForm(){
   document.querySelectorAll('#f-cur button').forEach(b=>b.classList.toggle('on', b.dataset.c===S.cur));
 }
 function resetForm(){
-  S.editing=null; S.cur='SGD'; S.photoFile=null; S.photoRemoved=false;
+  S.editing=null; S.cur='SGD'; S.photoFile=null; S.photoB64=null; S.photoRemoved=false; ocrMsg(null);
   S.split=new Set(people().filter(p=>weightOf(p.name)>0).map(p=>p.name));
   $('#f-title').value=''; $('#f-amt').value=''; $('#f-date').value=today();
   $('#f-paid').value = S.me && person(S.me) ? S.me : '';
@@ -515,7 +517,7 @@ function resetForm(){
 }
 function startEdit(id){
   const e=S.expenses.find(x=>x.id===id); if(!e) return;
-  S.editing=e; S.cur=e.currency||'SGD'; S.photoFile=null; S.photoRemoved=false;
+  S.editing=e; S.cur=e.currency||'SGD'; S.photoFile=null; S.photoB64=null; S.photoRemoved=false; ocrMsg(null);
   S.split=new Set(Object.keys(e.split||{}));
   $('#f-title').value=e.title||''; $('#f-amt').value=e.amount; $('#f-date').value=e.date||today();
   renderForm(); $('#f-paid').value=e.paidBy;
@@ -524,6 +526,7 @@ function startEdit(id){
 }
 function setThumb(url, hasExisting){
   const img=$('#f-thumb'), clr=$('#f-photo-clear'), lbl=$('#f-photo-lbl span');
+  $('#f-read').hidden = !(url && aiKey());
   if(url){ img.src=url; img.hidden=false; clr.hidden=false; lbl.textContent='Change photo'; }
   else if(hasExisting){ img.hidden=true; clr.hidden=false; lbl.textContent='Replace photo'; }
   else { img.hidden=true; img.removeAttribute('src'); clr.hidden=true; lbl.textContent='Add photo'; }
@@ -538,6 +541,54 @@ async function compress(file){
     return c.toDataURL('image/jpeg',0.72).split(',')[1];
   } finally { URL.revokeObjectURL(url); }
 }
+// ----- receipt reading (Claude API, key stays on this phone) -----
+const AI_MODEL='claude-haiku-5-5';
+const aiKey = () => store.get('sg_ai_key');
+function ocrMsg(html){ const el=$('#f-ocr'); if(html){ el.innerHTML=html; el.hidden=false; } else { el.hidden=true; el.innerHTML=''; } }
+async function readReceipt(){
+  if(!S.photoFile) return;
+  const key=aiKey(); if(!key){ ocrMsg('Tip: turn on <b>Receipt reading</b> in the People tab to fill this in from the photo.'); return; }
+  const file=S.photoFile, btn=$('#f-read');
+  btn.disabled=true; ocrMsg('Reading the receipt…');
+  try{
+    if(!S.photoB64) S.photoB64=await compress(file);
+    if(S.photoFile!==file) return;
+    const prompt='This is a photo of a bill, receipt or payment screenshot from a family trip in Singapore. '+
+      'Reply with JSON only, no other text: {"title": short label of what it was, e.g. "Dinner at Jules, Clarke Quay" or "Grab: Changi to hotel" (max 40 characters), '+
+      '"amount": the final total actually paid as a number (grand total including service charge and GST), '+
+      '"currency": 3-letter code such as "SGD" or "INR", "date": "YYYY-MM-DD" or null, '+
+      '"note": one short useful detail or null, e.g. "5 adult + 4 child tickets", "confidence": "high" or "low"}. '+
+      'If it is not a bill or receipt, reply {"error": "not a receipt"}.';
+    const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{
+        'content-type':'application/json','x-api-key':key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body:JSON.stringify({model:AI_MODEL,max_tokens:400,messages:[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:'image/jpeg',data:S.photoB64}},{type:'text',text:prompt}]}]})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok){
+      const m=(j.error&&j.error.message)||('error '+r.status);
+      throw new Error(r.status===401?'The Claude API key was not accepted. Check it in the People tab.':/credit/i.test(m)?'Your Claude API account is out of credit.':'Could not read the receipt ('+m+').');
+    }
+    if(S.photoFile!==file) return;
+    const txt=(j.content||[]).map(c=>c.text||'').join('');
+    const m=txt.match(/\{[\s\S]*\}/); if(!m) throw new Error('Could not make sense of the receipt. Fill it in by hand.');
+    const d=JSON.parse(m[0]);
+    if(d.error) throw new Error('That photo does not look like a receipt. Fill it in by hand.');
+    const filled=[];
+    if(d.title && !$('#f-title').value.trim()){ $('#f-title').value=String(d.title).slice(0,60); filled.push('name'); }
+    const amt=Number(d.amount);
+    if(amt>0){ $('#f-amt').value=Math.round(amt*100)/100; filled.push('amount'); }
+    const cur=String(d.currency||'').toUpperCase();
+    let curNote='';
+    if(cur==='SGD'||cur==='INR'){ S.cur=cur; document.querySelectorAll('#f-cur button').forEach(b=>b.classList.toggle('on', b.dataset.c===S.cur)); }
+    else if(cur) curNote=` Bill is in ${esc(cur)}, which the app can't convert. Enter the SGD or INR amount you were charged.`;
+    if(d.date && /^\d{4}-\d{2}-\d{2}$/.test(d.date)){ $('#f-date').value=d.date; filled.push('date'); }
+    renderPreview();
+    ocrMsg(`<b>Filled in from the receipt${filled.length?': '+filled.join(', '):''}.</b> Check it, then pick who paid and who it's for.`+
+      (d.note?`<br>Receipt says: ${esc(d.note)}.`:'')+(d.confidence==='low'?'<br>The photo was hard to read. Double-check the amount.':'')+curNote);
+  }catch(e){ ocrMsg(esc(e.message||'Could not read the receipt.')); }
+  finally{ btn.disabled=false; }
+}
+
 async function onSave(ev){
   ev.preventDefault();
   const title=$('#f-title').value.trim();
@@ -554,7 +605,7 @@ async function onSave(ev){
     let photo=ed ? (ed.photo||null) : null;
     if(S.photoFile){
       btn.textContent='Uploading photo…';
-      const data=await compress(S.photoFile);
+      const data=S.photoB64 || await compress(S.photoFile);
       photo=`photos/${id}-${Date.now().toString(36)}.jpg`;
       await putFile(photo, data, null, `Receipt: ${title}`);
     } else if(S.photoRemoved){ photo=null; }
@@ -700,6 +751,13 @@ function renderPeople(){
   });
   html+=`<div class="row"><div class="field grow"><label for="p-new">Add a person</label><input id="p-new" type="text" placeholder="Name"></div><button type="button" class="btn ghost" id="p-add">Add</button></div>
     <button type="button" class="btn primary" id="p-save">Save people</button></div>
+    <div class="card"><h2>Receipt reading</h2>
+      <p class="small muted">${aiKey() ? 'On for this phone. When you add a receipt photo, the app fills in the details for you to check.' : 'Paste a Claude API key to have receipt photos filled in automatically. The key stays on this phone only and is never put in the share link.'}</p>
+      ${aiKey() ? `<button type="button" class="btn ghost" id="p-ai-del">Turn off on this phone</button>` :
+      `<div class="field"><label for="p-ai">Claude API key</label><input id="p-ai" type="password" autocomplete="off" placeholder="sk-ant-…"></div>
+       <button type="button" class="btn ghost" id="p-ai-save">Turn on receipt reading</button>
+       <p class="small muted">Get a key at console.anthropic.com → API keys (needs a little prepaid credit; each receipt costs well under ₹2).</p>`}
+    </div>
     <div class="card"><h2>This phone</h2><button type="button" class="btn ghost" id="p-forget">Forget the access key on this phone</button></div>`;
   v.innerHTML=html;
 }
@@ -720,7 +778,7 @@ document.addEventListener('click', async ev=>{
     case 'f-none': S.split.clear(); return renderSplit();
     case 'f-cancel': resetForm(); return setView('list');
     case 'f-del': return onDelete();
-    case 'f-photo-clear': S.photoFile=null; S.photoRemoved=true; $('#f-photo').value=''; return setThumb(null,false);
+    case 'f-photo-clear': S.photoFile=null; S.photoB64=null; ocrMsg(null); S.photoRemoved=true; $('#f-photo').value=''; return setThumb(null,false);
     case 'modal-close': return closePhoto();
     case 's-save': return unlock();
     case 'b-fx-save': {
@@ -740,6 +798,13 @@ document.addEventListener('click', async ev=>{
       t.disabled=true; const ok=await saveConfig({...S.config, people:clean}, 'Update people'); t.disabled=false;
       if(ok){ S.draftPeople=null; toast('People saved'); renderAll(); } return;
     }
+    case 'f-read': return readReceipt();
+    case 'p-ai-save': {
+      const k=$('#p-ai').value.trim();
+      if(!/^sk-ant-/.test(k)) return toast('That does not look like a Claude API key (it starts with sk-ant-).');
+      store.set('sg_ai_key',k); toast('Receipt reading is on for this phone'); return renderPeople();
+    }
+    case 'p-ai-del': store.del('sg_ai_key'); toast('Receipt reading turned off'); return renderPeople();
     case 'p-forget':
       store.del('sg_token'); S.token=null; history.replaceState(null,'',location.pathname); return showSetup();
   }
@@ -756,7 +821,7 @@ document.addEventListener('input', ev=>{
 document.addEventListener('change', ev=>{
   const t=ev.target;
   if(t.id==='p-me'){ S.me=t.value||null; t.value?store.set('sg_me',t.value):store.del('sg_me'); if(!S.editing) $('#f-paid').value=S.me||$('#f-paid').value; toast(S.me?`Hi ${S.me}!`:'Cleared'); }
-  if(t.id==='f-photo' && t.files && t.files[0]){ S.photoFile=t.files[0]; S.photoRemoved=false; setThumb(URL.createObjectURL(t.files[0])); }
+  if(t.id==='f-photo' && t.files && t.files[0]){ S.photoFile=t.files[0]; S.photoB64=null; S.photoRemoved=false; setThumb(URL.createObjectURL(t.files[0])); readReceipt(); }
 });
 $('#f').addEventListener('submit', onSave);
 
