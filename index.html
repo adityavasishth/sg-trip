@@ -547,6 +547,7 @@ async function compress(file){
   } finally { URL.revokeObjectURL(url); }
 }
 // ----- receipt reading (Claude API, key stays on this phone) -----
+const APP_VERSION='3 (8 Nov · receipts + newest first)';
 const AI_MODEL='claude-haiku-5-5';
 const aiKey = () => store.get('sg_ai_key');
 function ocrMsg(html){ const el=$('#f-ocr'); if(html){ el.innerHTML=html; el.hidden=false; } else { el.hidden=true; el.innerHTML=''; } }
@@ -766,7 +767,8 @@ function renderPeople(){
        <button type="button" class="btn ghost" id="p-ai-save">Turn on receipt reading</button>
        <p class="small muted">Get a key at console.anthropic.com → API keys (needs a little prepaid credit; each receipt costs well under ₹2).</p>`}
     </div>
-    <div class="card"><h2>This phone</h2><button type="button" class="btn ghost" id="p-forget">Forget the access key on this phone</button></div>`;
+    <div class="card"><h2>This phone</h2><button type="button" class="btn ghost" id="p-forget">Forget the access key on this phone</button>
+      <p class="small muted">App version: ${APP_VERSION}</p></div>`;
   v.innerHTML=html;
 }
 
