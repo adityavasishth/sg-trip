@@ -1,0 +1,18 @@
+{
+ "id": "mw5ypp3tejaiy",
+ "title": "Tea coffee",
+ "amount": 25.9,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Garima": 1,
+  "Kavya": 1,
+  "Sayan": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-06",
+ "photo": null,
+ "createdAt": 1794029281625,
+ "updatedAt": 1794029281625,
+ "addedBy": "Sayan"
+}
