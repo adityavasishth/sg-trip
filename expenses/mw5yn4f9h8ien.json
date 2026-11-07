@@ -1,0 +1,19 @@
+{
+ "id": "mw5yn4f9h8ien",
+ "title": "Dinner at Clark Quay",
+ "amount": 366,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Kavya": 1,
+  "Sayan": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-07",
+ "photo": "photos/mw5yn4f9h8ien-mw5yn4hd.jpg",
+ "createdAt": 1794029164329,
+ "updatedAt": 1794029164329,
+ "addedBy": "Sayan"
+}
