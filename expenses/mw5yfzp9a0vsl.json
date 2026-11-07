@@ -1,0 +1,16 @@
+{
+ "id": "mw5yfzp9a0vsl",
+ "title": "Cab airport",
+ "amount": 80.96,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Sayan": 1
+ },
+ "date": "2026-11-06",
+ "photo": "photos/mw5yfzp9a0vsl-mw5yfzpu.jpg",
+ "createdAt": 1794028831640,
+ "updatedAt": 1794028831640,
+ "addedBy": "Sayan"
+}
