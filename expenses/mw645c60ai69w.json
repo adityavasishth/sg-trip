@@ -1,0 +1,23 @@
+{
+ "id": "mw645c60ai69w",
+ "title": "Orange juice at zoo",
+ "amount": 18,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Garima": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Sayan": 1,
+  "Shilp": 1,
+  "Shreyan": 1,
+  "Aditya": 1,
+  "Arin": 1
+ },
+ "date": "2026-11-07",
+ "photo": null,
+ "createdAt": 1794038409432,
+ "updatedAt": 1794038409432,
+ "addedBy": "Sayan"
+}
