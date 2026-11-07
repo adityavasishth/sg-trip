@@ -1,0 +1,19 @@
+{
+ "id": "mw5yym8c4qns2",
+ "title": "Art Science museum",
+ "amount": 156,
+ "currency": "SGD",
+ "paidBy": "Aditya",
+ "split": {
+  "Kavya": 1,
+  "Shilp": 1,
+  "Ahana": 1,
+  "Aditya": 1,
+  "Garima": 1
+ },
+ "date": "2026-11-07",
+ "photo": null,
+ "createdAt": 1794029697804,
+ "updatedAt": 1794029697804,
+ "addedBy": null
+}
