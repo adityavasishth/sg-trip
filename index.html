@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="SG Splits">
+<meta name="theme-color" content="#a3245f">
+<title>SG Trip Splits</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout idea: one-column phone tool, sticky header, bottom tab bar, cards for summary first, then detail. Accent = orchid (Singapore's national flower). */
+:root{
+  --bg:#f3f4f8; --surface:#ffffff; --ink:#17192c; --muted:#62688a; --line:#e1e3ee;
+  --accent:#a3245f; --accent-soft:#f6e3ec; --on-accent:#ffffff;
+  --good:#1d7f55; --good-soft:#e1f3ea; --bad:#b83a26; --bad-soft:#fbe7e2;
+  --display:"Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body:"IBM Plex Sans", -apple-system, "Segoe UI", Roboto, sans-serif;
+  --r:14px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#10111b; --surface:#1a1c2b; --ink:#eceef8; --muted:#9ba1bf; --line:#2b2e45;
+    --accent:#e2669f; --accent-soft:#3a1d2c; --on-accent:#1a0b12;
+    --good:#52c690; --good-soft:#15301f; --bad:#f2846c; --bad-soft:#3a1d17;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#10111b; --surface:#1a1c2b; --ink:#eceef8; --muted:#9ba1bf; --line:#2b2e45;
+  --accent:#e2669f; --accent-soft:#3a1d2c; --on-accent:#1a0b12;
+  --good:#52c690; --good-soft:#15301f; --bad:#f2846c; --bad-soft:#3a1d17;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+body{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+h1,h2,h3{font-family:var(--display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+.num{font-variant-numeric:tabular-nums}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.top{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:calc(12px + env(safe-area-inset-top)) 16px 12px;background:var(--bg);border-bottom:1px solid var(--line)}
+.top h1{font-size:1.35rem;font-weight:800}
+.top p{margin:0;color:var(--muted);font-size:.82rem}
+.icon-btn{border:1px solid var(--line);background:var(--surface);border-radius:999px;width:40px;height:40px;display:grid;place-items:center;cursor:pointer}
+.icon-btn.spin svg{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.icon-btn.spin svg{animation:none}}
+
+main{max-width:560px;margin:0 auto;padding:16px;display:grid;gap:16px}
+.view{display:grid;gap:16px}
+[hidden]{display:none !important}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;display:grid;gap:12px}
+.card h2{font-size:1.1rem;font-weight:600}
+.muted{color:var(--muted)}
+.small{font-size:.85rem}
+
+label,.lab{font-weight:500;font-size:.9rem}
+.field{display:grid;gap:6px}
+input[type=text],input[type=password],input[type=date],input:not([type]),select{
+  width:100%;padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);min-height:46px}
+input:focus,select:focus{border-color:var(--accent);outline:none}
+.row{display:flex;gap:12px;align-items:end}
+.grow{flex:1}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;min-height:46px}
+.seg button{border:0;background:var(--bg);padding:0 14px;cursor:pointer;font-weight:500}
+.seg button.on{background:var(--accent);color:var(--on-accent)}
+.lab-row{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.link{border:0;background:none;color:var(--accent);font-weight:600;cursor:pointer;padding:4px}
+
+.fam{display:grid;gap:8px;padding:10px;border:1px dashed var(--line);border-radius:12px}
+.fam-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.fam-head button{border:0;background:none;font-weight:600;cursor:pointer;padding:2px 0;text-align:left}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:8px 14px;cursor:pointer;font-weight:500;min-height:40px}
+.chip.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.chip small{color:var(--muted);margin-left:4px}
+
+.btn{border:0;border-radius:12px;padding:14px 16px;font-weight:600;cursor:pointer;min-height:50px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn.primary{background:var(--accent);color:var(--on-accent);width:100%}
+.btn.primary:disabled{opacity:.6;cursor:wait}
+.btn.ghost{background:var(--bg);border:1px solid var(--line)}
+.btn.danger{background:var(--bad-soft);color:var(--bad)}
+.btn-row{display:flex;gap:10px}
+.btn-row .btn{flex:1}
+.photo-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.thumb{width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--line)}
+.preview{background:var(--bg);border-radius:10px;padding:10px 12px;font-size:.88rem;color:var(--muted)}
+.preview b{color:var(--ink)}
+
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:14px;display:grid;gap:2px}
+.tile span{font-size:.8rem;color:var(--muted)}
+.tile b{font-family:var(--display);font-size:1.45rem;font-weight:800;font-variant-numeric:tabular-nums}
+.tile small{color:var(--muted);font-variant-numeric:tabular-nums}
+
+.day{font-size:.8rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-family:var(--body);font-weight:600;margin:4px 2px -6px}
+.exp-list{display:grid;gap:8px}
+.exp{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:start;text-align:left;width:100%;
+  background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
+.exp .t{font-weight:600;display:flex;gap:6px;align-items:center;min-width:0;overflow-wrap:anywhere}
+.exp .m{grid-column:1;font-size:.83rem;color:var(--muted);overflow-wrap:anywhere}
+.exp .a{grid-row:1/3;grid-column:2;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.exp .a small{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
+.ph-btn{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:2px 6px;cursor:pointer;display:inline-flex;align-items:center}
+
+.xfer{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px;border-radius:12px;background:var(--accent-soft)}
+.xfer .who{font-weight:600}
+.xfer .amt{grid-row:1/3;grid-column:2;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.xfer .amt small{display:block;font-weight:400;color:var(--muted)}
+.xfer .sub{font-size:.82rem;color:var(--muted)}
+.fam-card{display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
+.fam-card:first-of-type{border-top:0;padding-top:0}
+.fam-card .hd{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.pill{border-radius:999px;padding:3px 10px;font-size:.82rem;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}
+.pill.bad{background:var(--bad-soft);color:var(--bad)}
+.pill.even{background:var(--bg);color:var(--muted)}
+.kv{display:flex;gap:16px;font-size:.85rem;color:var(--muted);flex-wrap:wrap}
+.kv b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:.88rem}
+th,td{padding:8px 6px;text-align:right;border-bottom:1px solid var(--line);font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:500}
+
+.person{display:grid;grid-template-columns:1fr 1fr 96px 32px;gap:8px;align-items:center}
+.person .nm{font-weight:600;overflow-wrap:anywhere}
+.person input,.person select{min-height:40px;padding:8px}
+.person .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.2rem}
+.person-head{font-size:.78rem;color:var(--muted)}
+
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);
+  background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
+.tabs button{border:0;background:none;padding:8px 4px;border-radius:10px;font-weight:600;font-size:.82rem;color:var(--muted);cursor:pointer;display:grid;justify-items:center;gap:2px}
+.tabs button svg{width:22px;height:22px}
+.tabs button.on{color:var(--accent);background:var(--accent-soft)}
+
+#toast{position:fixed;left:50%;bottom:calc(90px + env(safe-area-inset-bottom));transform:translateX(-50%);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:999px;font-size:.9rem;font-weight:500;z-index:20;max-width:90vw;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s}
+#toast.show{opacity:1}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);z-index:30;display:grid;place-items:center;padding:16px}
+.modal img{max-width:100%;max-height:80vh;border-radius:10px;background:#fff}
+.modal .close{position:absolute;top:calc(12px + env(safe-area-inset-top));right:12px;background:#fff;color:#111;border:0;border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer}
+.modal p{color:#fff}
+.empty{text-align:center;padding:24px 8px;color:var(--muted)}
+details summary{cursor:pointer;font-weight:600}
+details ol{padding-left:20px;margin:8px 0 0;display:grid;gap:6px;font-size:.9rem}
+code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:.85em}
+@media (max-width:400px){.person{grid-template-columns:1fr 1fr 80px 28px}}
+</style>
+</head>
+<body>
+<header class="top">
+  <div>
+    <h1>SG Trip Splits</h1>
+    <p id="sub">Singapore · Nov 2026</p>
+  </div>
+  <button id="refresh" class="icon-btn" type="button" aria-label="Refresh">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg>
+  </button>
+</header>
+
+<main>
+  <!-- SETUP -->
+  <section id="v-setup" class="view" hidden>
+    <div class="card">
+      <h2>Unlock this trip</h2>
+      <p class="muted small">This app saves expenses to a GitHub repo. It needs an access key once per phone. If someone sent you the full trip link, just open that link instead, and you're in.</p>
+      <div class="field">
+        <label for="s-token">Access key</label>
+        <input id="s-token" type="password" autocomplete="off" placeholder="github_pat_…">
+      </div>
+      <button class="btn primary" id="s-save" type="button">Unlock</button>
+      <p id="s-err" class="small" style="color:var(--bad)" hidden></p>
+      <details>
+        <summary>How to make the key (Aditya only)</summary>
+        <ol>
+          <li>On GitHub: <b>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</b>.</li>
+          <li>Name: <code>sg-trip</code>. Expiration: 30 days.</li>
+          <li>Repository access: <b>Only select repositories → sg-trip</b>.</li>
+          <li>Permissions → Repository → <b>Contents: Read and write</b>.</li>
+          <li>Generate, copy it, paste it above, then go to <b>People → Copy share link</b> and post that link on WhatsApp.</li>
+        </ol>
+      </details>
+    </div>
+  </section>
+
+  <!-- ADD / EDIT -->
+  <section id="v-add" class="view" hidden>
+    <form id="f" class="card" novalidate>
+      <h2 id="f-heading">Add an expense</h2>
+      <div class="field">
+        <label for="f-title">What was it?</label>
+        <input id="f-title" type="text" autocomplete="off" placeholder="Dinner at Lau Pa Sat">
+      </div>
+      <div class="row">
+        <div class="field grow">
+          <label for="f-amt">Amount</label>
+          <input id="f-amt" type="text" inputmode="decimal" autocomplete="off" placeholder="0.00" class="num">
+        </div>
+        <div class="seg" id="f-cur" role="group" aria-label="Currency">
+          <button type="button" data-c="SGD" class="on">SGD</button>
+          <button type="button" data-c="INR">INR</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-paid">Paid by</label>
+        <select id="f-paid"></select>
+      </div>
+      <div class="field">
+        <div class="lab-row">
+          <span class="lab">Split between</span>
+          <span><button type="button" class="link" id="f-all">Everyone</button><button type="button" class="link" id="f-none">Clear</button></span>
+        </div>
+        <div id="f-split" class="view" style="gap:10px"></div>
+        <div id="f-preview" class="preview"></div>
+      </div>
+      <div class="field">
+        <label for="f-date">Date</label>
+        <input id="f-date" type="date">
+      </div>
+      <div class="field">
+        <span class="lab">Receipt photo (optional)</span>
+        <div class="photo-row">
+          <label class="btn ghost" for="f-photo" id="f-photo-lbl">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+            <span>Add photo</span>
+          </label>
+          <input id="f-photo" type="file" accept="image/*" hidden>
+          <img id="f-thumb" class="thumb" alt="Receipt preview" hidden>
+          <button type="button" class="link" id="f-photo-clear" hidden>Remove photo</button>
+        </div>
+      </div>
+      <button class="btn primary" id="f-save" type="submit">Save expense</button>
+      <div class="btn-row" id="f-editbar" hidden>
+        <button type="button" class="btn ghost" id="f-cancel">Cancel</button>
+        <button type="button" class="btn danger" id="f-del">Delete</button>
+      </div>
+    </form>
+  </section>
+
+  <!-- LIST -->
+  <section id="v-list" class="view" hidden></section>
+
+  <!-- BALANCES -->
+  <section id="v-bal" class="view" hidden></section>
+
+  <!-- PEOPLE -->
+  <section id="v-people" class="view" hidden></section>
+</main>
+
+<nav class="tabs" id="tabs" hidden>
+  <button type="button" data-v="add"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>Add</button>
+  <button type="button" data-v="list"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12M4 6h.01M4 12h.01M4 18h.01"/></svg>Expenses</button>
+  <button type="button" data-v="bal"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h11l-3-3M17 17H6l3 3"/></svg>Balances</button>
+  <button type="button" data-v="people"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M17 14.5c2.3.2 3.9 1.9 4.5 4.5"/></svg>People</button>
+</nav>
+
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal" class="modal" hidden>
+  <button type="button" class="close" id="modal-close">Close</button>
+  <p id="modal-msg">Loading photo…</p>
+  <img id="modal-img" alt="Receipt" hidden>
+</div>
+
+<script>
+(function(){
+'use strict';
+// ---------- settings ----------
+const REPO = 'adityavasishth/sg-trip';   // where data lives (switch to a private repo later)
+const BRANCH = 'data';                    // data branch, kept separate from the app code on main
+const API = 'https://api.github.com';
+const DEFAULT_CONFIG = {
+  fx: 75,
+  people: [
+    {name:'Aditya', family:"Aditya's family", weight:1},
+    {name:'Garima', family:"Aditya's family", weight:1},
+    {name:'Arin',   family:"Aditya's family", weight:1},
+    {name:'Shreyan',family:"Aditya's family", weight:1},
+    {name:'Kavya',  family:'Kavya & Ahana', weight:1},
+    {name:'Ahana',  family:'Kavya & Ahana', weight:1},
+    {name:'Jia',    family:'Jia, Sayan & Shirpi', weight:1},
+    {name:'Sayan',  family:'Jia, Sayan & Shirpi', weight:1},
+    {name:'Shirpi', family:'Jia, Sayan & Shirpi', weight:1}
+  ]
+};
+
+// ---------- state ----------
+const S = {
+  token:null, me:null, config:null, configSha:null, expenses:[], treeSha:null,
+  view:'add', editing:null, cur:'SGD', split:new Set(), photoFile:null, photoRemoved:false,
+  busy:false, lastSync:null, draftPeople:null
+};
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+  set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+  del(k){ try{ localStorage.removeItem(k); }catch(e){} }
+};
+const b64e = s => btoa(unescape(encodeURIComponent(s)));
+const b64d = b => decodeURIComponent(escape(atob(String(b).replace(/\s/g,''))));
+const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const today = () => { const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+
+function toast(msg, ms){
+  const t=$('#toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), ms||2400);
+}
+
+// ---------- money ----------
+const fx = () => Number(S.config && S.config.fx) > 0 ? Number(S.config.fx) : 75;
+const toSGD = e => e.currency === 'INR' ? Number(e.amount)/fx() : Number(e.amount);
+const sgd = n => 'SGD ' + (Math.round(n*100)/100).toLocaleString('en-SG',{minimumFractionDigits:2,maximumFractionDigits:2});
+const inr = n => '₹' + Math.round(n*fx()).toLocaleString('en-IN');
+const people = () => (S.config && S.config.people) || [];
+const person = n => people().find(p => p.name === n);
+const familyOf = n => { const p=person(n); return (p && p.family) || n; };
+const weightOf = n => { const p=person(n); return p && p.weight != null ? Number(p.weight) : 1; };
+function families(){
+  const map=new Map();
+  people().forEach(p => { const f=p.family||p.name; if(!map.has(f)) map.set(f,[]); map.get(f).push(p.name); });
+  return map;
+}
+
+function compute(){
+  const P={};
+  people().forEach(p => P[p.name]={paid:0,share:0});
+  const ensure = n => P[n] || (P[n]={paid:0,share:0});
+  let total=0;
+  for(const e of S.expenses){
+    const amt=toSGD(e); if(!isFinite(amt)) continue;
+    total+=amt;
+    ensure(e.paidBy).paid+=amt;
+    const entries=Object.entries(e.split||{});
+    const W=entries.reduce((a,[,w])=>a+Number(w),0);
+    if(W<=0) continue;
+    for(const [n,w] of entries) ensure(n).share += amt*Number(w)/W;
+  }
+  const F={};
+  for(const [n,p] of Object.entries(P)){
+    const f=familyOf(n);
+    F[f]=F[f]||{paid:0,share:0,members:[]};
+    F[f].paid+=p.paid; F[f].share+=p.share; F[f].members.push(n);
+  }
+  for(const f of Object.values(F)) f.net=f.paid-f.share;
+  return {total,P,F,transfers:settle(F)};
+}
+function settle(F){
+  const cred=[], debt=[];
+  for(const [k,v] of Object.entries(F)){
+    const n=Math.round(v.net*100)/100;
+    if(n>0.009) cred.push({k,n}); else if(n<-0.009) debt.push({k,n:-n});
+  }
+  cred.sort((a,b)=>b.n-a.n); debt.sort((a,b)=>b.n-a.n);
+  const out=[]; let i=0,j=0;
+  while(i<debt.length && j<cred.length){
+    const x=Math.min(debt[i].n, cred[j].n);
+    if(x>0.009) out.push({from:debt[i].k, to:cred[j].k, amt:x});
+    debt[i].n-=x; cred[j].n-=x;
+    if(debt[i].n<0.01) i++;
+    if(cred[j].n<0.01) j++;
+  }
+  return out;
+}
+
+// ---------- GitHub ----------
+async function gh(path, opt){
+  opt=opt||{};
+  const headers={'Authorization':'Bearer '+S.token,'Accept':opt.accept||'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'};
+  if(opt.body) headers['Content-Type']='application/json';
+  let r;
+  try{
+    r=await fetch(API+path,{method:opt.method||'GET',cache:'no-store',headers,body:opt.body?JSON.stringify(opt.body):undefined});
+  }catch(e){ const err=new Error('No internet connection. Try again in a moment.'); err.status=0; throw err; }
+  if(!r.ok){
+    const err=new Error('GitHub error '+r.status); err.status=r.status;
+    try{ err.detail=(await r.json()).message; }catch(e){}
+    throw err;
+  }
+  return r;
+}
+async function blobJSON(sha){
+  const k='sg_blob_'+sha, c=store.get(k);
+  if(c){ try{ return JSON.parse(c); }catch(e){} }
+  const j=await (await gh(`/repos/${REPO}/git/blobs/${sha}`)).json();
+  const txt=b64d(j.content); store.set(k,txt);
+  return JSON.parse(txt);
+}
+async function pool(items,n,fn){
+  const res=new Array(items.length); let i=0;
+  await Promise.all(Array.from({length:Math.min(n,items.length)}, async()=>{
+    while(i<items.length){ const j=i++; try{ res[j]=await fn(items[j]); }catch(e){ res[j]=null; } }
+  }));
+  return res;
+}
+async function putFile(path, content64, sha, message){
+  const body={message, content:content64, branch:BRANCH};
+  if(sha) body.sha=sha;
+  const j=await (await gh(`/repos/${REPO}/contents/${path}`,{method:'PUT',body})).json();
+  return j.content.sha;
+}
+async function delFile(path, sha, message){
+  await gh(`/repos/${REPO}/contents/${path}`,{method:'DELETE',body:{message, sha, branch:BRANCH}});
+}
+function normalizeConfig(c){
+  c=c||{}; const d=JSON.parse(JSON.stringify(DEFAULT_CONFIG));
+  return {fx: Number(c.fx)>0?Number(c.fx):d.fx, people: Array.isArray(c.people)&&c.people.length?c.people:d.people};
+}
+async function load(force){
+  const tree=await (await gh(`/repos/${REPO}/git/trees/${BRANCH}?recursive=1`)).json();
+  S.lastSync=new Date();
+  if(!force && tree.sha===S.treeSha) return false;
+  const entries=tree.tree||[];
+  const cfg=entries.find(e=>e.path==='config.json');
+  if(cfg){ S.config=normalizeConfig(await blobJSON(cfg.sha)); S.configSha=cfg.sha; }
+  else { S.config=normalizeConfig(null); S.configSha=null; }
+  const files=entries.filter(e=>e.type==='blob' && /^expenses\/[^/]+\.json$/.test(e.path));
+  const list=await pool(files,6,async e=>{ const x=await blobJSON(e.sha); x._sha=e.sha; x._path=e.path; return x; });
+  S.expenses=list.filter(Boolean).sort(byDate);
+  S.treeSha=tree.sha;
+  return true;
+}
+const byDate=(a,b)=>(b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0);
+
+async function refresh(force, quiet){
+  if(S.busy) return;
+  S.busy=true; $('#refresh').classList.add('spin');
+  try{
+    const changed=await load(force);
+    if(changed||force) renderAll();
+    renderSub();
+  }catch(e){
+    if(e.status===401||e.status===403){ showSetup('That access key no longer works. Ask Aditya for a fresh trip link.'); }
+    else if(e.status===404){ if(!quiet) toast('Trip data not found. Check the key has access to sg-trip.'); }
+    else if(!quiet) toast(e.message);
+  }finally{ S.busy=false; $('#refresh').classList.remove('spin'); }
+}
+
+// ---------- views ----------
+function setView(v){
+  S.view=v; store.set('sg_view',v);
+  ['add','list','bal','people'].forEach(x=>{ $('#v-'+x).hidden = x!==v; });
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
+  window.scrollTo(0,0);
+}
+function showSetup(err){
+  $('#v-setup').hidden=false; $('#tabs').hidden=true;
+  ['add','list','bal','people'].forEach(x=>$('#v-'+x).hidden=true);
+  const el=$('#s-err'); if(err){ el.textContent=err; el.hidden=false; } else el.hidden=true;
+}
+function showApp(){
+  $('#v-setup').hidden=true; $('#tabs').hidden=false;
+  setView(S.view);
+}
+function renderSub(){
+  const t=S.lastSync ? S.lastSync.toLocaleTimeString('en-SG',{hour:'numeric',minute:'2-digit'}) : '';
+  $('#sub').textContent = 'Singapore · Nov 2026' + (t ? ' · synced '+t : '');
+}
+function renderAll(){ renderForm(); renderList(); renderBal(); renderPeople(); }
+
+// ----- form -----
+function renderPaidBy(){
+  const sel=$('#f-paid'), cur=sel.value || (S.editing && S.editing.paidBy) || S.me || '';
+  sel.innerHTML = people().map(p=>`<option value="${esc(p.name)}">${esc(p.name)}</option>`).join('');
+  if(cur && person(cur)) sel.value=cur;
+}
+function renderSplit(){
+  const box=$('#f-split'); let html='';
+  for(const [f,members] of families()){
+    const allOn=members.every(m=>S.split.has(m));
+    html+=`<div class="fam"><div class="fam-head"><button type="button" data-fam="${esc(f)}">${esc(f)}</button><span class="small muted">${allOn?'all in':members.filter(m=>S.split.has(m)).length+' of '+members.length}</span></div><div class="chips">`;
+    for(const m of members){
+      const w=weightOf(m);
+      html+=`<button type="button" class="chip${S.split.has(m)?' on':''}" data-p="${esc(m)}" aria-pressed="${S.split.has(m)}">${esc(m)}${w!==1?`<small>×${w}</small>`:''}</button>`;
+    }
+    html+='</div></div>';
+  }
+  box.innerHTML=html;
+  renderPreview();
+}
+function renderPreview(){
+  const amtRaw=parseFloat(String($('#f-amt').value).replace(/,/g,''));
+  const el=$('#f-preview');
+  if(!S.split.size){ el.innerHTML='Pick who this was for.'; return; }
+  const names=[...S.split]; const W=names.reduce((a,n)=>a+weightOf(n),0);
+  if(!(amtRaw>0) || W<=0){ el.innerHTML=`Split between <b>${names.length}</b> ${names.length===1?'person':'people'}.`; return; }
+  const amt = S.cur==='INR' ? amtRaw/fx() : amtRaw;
+  const byFam={}; names.forEach(n=>{ const f=familyOf(n); byFam[f]=(byFam[f]||0)+amt*weightOf(n)/W; });
+  const parts=Object.entries(byFam).map(([f,v])=>`${esc(f)} <b class="num">${sgd(v)}</b>`).join(' · ');
+  el.innerHTML=`<b>${names.length}</b> ${names.length===1?'person':'people'} · ${sgd(amt/W)} per full share<br>${parts}`;
+}
+function renderForm(){
+  renderPaidBy(); renderSplit();
+  $('#f-heading').textContent = S.editing ? 'Edit expense' : 'Add an expense';
+  $('#f-save').textContent = S.editing ? 'Save changes' : 'Save expense';
+  $('#f-editbar').hidden = !S.editing;
+  document.querySelectorAll('#f-cur button').forEach(b=>b.classList.toggle('on', b.dataset.c===S.cur));
+}
+function resetForm(){
+  S.editing=null; S.cur='SGD'; S.photoFile=null; S.photoRemoved=false;
+  S.split=new Set(people().filter(p=>weightOf(p.name)>0).map(p=>p.name));
+  $('#f-title').value=''; $('#f-amt').value=''; $('#f-date').value=today();
+  $('#f-paid').value = S.me && person(S.me) ? S.me : '';
+  setThumb(null); delArmed=false; $('#f-del').textContent='Delete';
+  renderForm();
+}
+function startEdit(id){
+  const e=S.expenses.find(x=>x.id===id); if(!e) return;
+  S.editing=e; S.cur=e.currency||'SGD'; S.photoFile=null; S.photoRemoved=false;
+  S.split=new Set(Object.keys(e.split||{}));
+  $('#f-title').value=e.title||''; $('#f-amt').value=e.amount; $('#f-date').value=e.date||today();
+  renderForm(); $('#f-paid').value=e.paidBy;
+  setThumb(null, !!e.photo); delArmed=false; $('#f-del').textContent='Delete';
+  setView('add');
+}
+function setThumb(url, hasExisting){
+  const img=$('#f-thumb'), clr=$('#f-photo-clear'), lbl=$('#f-photo-lbl span');
+  if(url){ img.src=url; img.hidden=false; clr.hidden=false; lbl.textContent='Change photo'; }
+  else if(hasExisting){ img.hidden=true; clr.hidden=false; lbl.textContent='Replace photo'; }
+  else { img.hidden=true; img.removeAttribute('src'); clr.hidden=true; lbl.textContent='Add photo'; }
+}
+async function compress(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('Could not read that photo. Try a different one.')); i.src=url; });
+    const max=1400, w=img.naturalWidth, h=img.naturalHeight, s=Math.min(1, max/Math.max(w,h));
+    const c=document.createElement('canvas'); c.width=Math.round(w*s); c.height=Math.round(h*s);
+    c.getContext('2d').drawImage(img,0,0,c.width,c.height);
+    return c.toDataURL('image/jpeg',0.72).split(',')[1];
+  } finally { URL.revokeObjectURL(url); }
+}
+async function onSave(ev){
+  ev.preventDefault();
+  const title=$('#f-title').value.trim();
+  const amount=parseFloat(String($('#f-amt').value).replace(/,/g,''));
+  const paidBy=$('#f-paid').value;
+  if(!title){ toast('Add what the expense was for.'); $('#f-title').focus(); return; }
+  if(!(amount>0)){ toast('Enter an amount above zero.'); $('#f-amt').focus(); return; }
+  if(!paidBy){ toast('Pick who paid.'); return; }
+  if(!S.split.size){ toast('Pick at least one person to split with.'); return; }
+  const btn=$('#f-save'); btn.disabled=true; btn.textContent='Saving…';
+  const ed=S.editing;
+  try{
+    const id=ed ? ed.id : newId();
+    let photo=ed ? (ed.photo||null) : null;
+    if(S.photoFile){
+      btn.textContent='Uploading photo…';
+      const data=await compress(S.photoFile);
+      photo=`photos/${id}-${Date.now().toString(36)}.jpg`;
+      await putFile(photo, data, null, `Receipt: ${title}`);
+    } else if(S.photoRemoved){ photo=null; }
+    const split={}; [...S.split].forEach(n=>split[n]=weightOf(n));
+    const rec={id,title,amount:Math.round(amount*100)/100,currency:S.cur,paidBy,split,date:$('#f-date').value||today(),photo,
+      createdAt: ed ? ed.createdAt : Date.now(), updatedAt: Date.now(), addedBy: S.me||null};
+    const txt=JSON.stringify(rec,null,1);
+    const path=`expenses/${id}.json`;
+    btn.textContent='Saving…';
+    const sha=await putFile(path, b64e(txt), ed ? ed._sha : null, `${ed?'Edit':'Add'}: ${title} (${rec.currency} ${rec.amount})`);
+    store.set('sg_blob_'+sha, txt);
+    rec._sha=sha; rec._path=path;
+    S.expenses=S.expenses.filter(x=>x.id!==id).concat([rec]).sort(byDate);
+    S.treeSha=null;
+    toast(ed ? 'Changes saved' : 'Expense saved');
+    resetForm(); renderList(); renderBal();
+    if(ed) setView('list');
+  }catch(e){
+    if(e.status===409||e.status===422){ toast('Someone else changed this just now. Refreshed — please try again.'); refresh(true,true); }
+    else toast(e.status===401||e.status===403 ? 'Access key not accepted.' : (e.message||'Could not save. Try again.'));
+  }finally{
+    btn.disabled=false; btn.textContent = S.editing ? 'Save changes' : 'Save expense';
+  }
+}
+let delArmed=false;
+async function onDelete(){
+  const ed=S.editing; if(!ed) return;
+  if(!delArmed){ delArmed=true; $('#f-del').textContent='Tap again to delete'; setTimeout(()=>{ delArmed=false; $('#f-del').textContent='Delete'; },3500); return; }
+  $('#f-del').disabled=true;
+  try{
+    await delFile(ed._path, ed._sha, `Delete: ${ed.title}`);
+    S.expenses=S.expenses.filter(x=>x.id!==ed.id); S.treeSha=null;
+    toast('Expense deleted'); resetForm(); renderList(); renderBal(); setView('list');
+  }catch(e){ toast(e.status===409?'It changed just now. Refresh and try again.':(e.message||'Could not delete.')); }
+  finally{ $('#f-del').disabled=false; delArmed=false; }
+}
+
+// ----- list -----
+function splitLabel(e){
+  const names=Object.keys(e.split||{});
+  const all=people().map(p=>p.name);
+  if(all.length && all.every(n=>names.includes(n)) && names.length===all.length) return 'everyone';
+  const fams=[]; let rest=[...names];
+  for(const [f,members] of families()){
+    if(members.every(m=>names.includes(m))){ fams.push(f); rest=rest.filter(n=>!members.includes(n)); }
+  }
+  return fams.concat(rest).join(', ');
+}
+const photoIcon='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h3l2-3h6l2 3h3v13H4z"/><circle cx="12" cy="13" r="4"/></svg>';
+function renderList(){
+  const v=$('#v-list'); const c=compute();
+  let html=`<div class="tiles"><div class="tile"><span>Trip total</span><b>${sgd(c.total)}</b><small>${inr(c.total)}</small></div>
+    <div class="tile"><span>Expenses logged</span><b>${S.expenses.length}</b><small>tap one to edit</small></div></div>`;
+  if(!S.expenses.length){
+    html+=`<div class="card empty">No expenses yet. Add the first one from the <b>Add</b> tab.</div>`;
+  } else {
+    let day=null;
+    for(const e of S.expenses){
+      if(e.date!==day){
+        if(day!==null) html+='</div>';
+        day=e.date;
+        const d=new Date((e.date||today())+'T12:00:00');
+        html+=`<h3 class="day">${d.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short'})}</h3><div class="exp-list">`;
+      }
+      const amtS = e.currency==='INR' ? `₹${Number(e.amount).toLocaleString('en-IN')}<small>${sgd(toSGD(e))}</small>` : `${sgd(e.amount)}<small>${inr(e.amount)}</small>`;
+      html+=`<div class="exp" role="button" tabindex="0" data-id="${esc(e.id)}">
+        <div class="t">${esc(e.title)} ${e.photo?`<button type="button" class="ph-btn" data-photo="${esc(e.photo)}" aria-label="View receipt">${photoIcon}</button>`:''}</div>
+        <div class="m">${esc(e.paidBy)} paid · for ${esc(splitLabel(e))}</div>
+        <div class="a">${amtS}</div></div>`;
+    }
+    html+='</div>';
+  }
+  v.innerHTML=html;
+}
+
+// ----- balances -----
+function summaryText(c){
+  const lines=['*SG trip — who pays whom*', `Trip total: ${sgd(c.total)} (${inr(c.total)}) · rate ₹${fx()}/SGD`, ''];
+  if(!c.transfers.length) lines.push('All square — nobody owes anything.');
+  c.transfers.forEach(t=>lines.push(`• ${t.from} → ${t.to}: ${sgd(t.amt)} (${inr(t.amt)})`));
+  lines.push('');
+  for(const [f,v] of Object.entries(c.F)) lines.push(`${f}: paid ${sgd(v.paid)}, share ${sgd(v.share)}`);
+  return lines.join('\n');
+}
+function renderBal(){
+  const v=$('#v-bal'); const c=compute();
+  let html=`<div class="card"><h2>Who pays whom</h2>`;
+  if(!S.expenses.length) html+=`<p class="muted small">Nothing to settle yet.</p>`;
+  else if(!c.transfers.length) html+=`<p class="muted small">All square. Nobody owes anything.</p>`;
+  else c.transfers.forEach(t=>{
+    html+=`<div class="xfer"><div class="who">${esc(t.from)} → ${esc(t.to)}</div><div class="amt">${sgd(t.amt)}<small>${inr(t.amt)}</small></div><div class="sub">settle over UPI</div></div>`;
+  });
+  html+=`<div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
+    <button type="button" class="btn ghost" id="b-fx-save">Update</button></div>
+    <button type="button" class="btn ghost" id="b-copy">Copy summary for WhatsApp</button></div>`;
+  html+=`<div class="card"><h2>By family</h2>`;
+  for(const [f,d] of Object.entries(c.F)){
+    const n=Math.round(d.net*100)/100;
+    const pill = n>0.009 ? `<span class="pill good">gets back ${sgd(n)}</span>` : n<-0.009 ? `<span class="pill bad">owes ${sgd(-n)}</span>` : `<span class="pill even">even</span>`;
+    html+=`<div class="fam-card"><div class="hd"><b>${esc(f)}</b>${pill}</div>
+      <div class="kv"><span>Paid <b>${sgd(d.paid)}</b></span><span>Share <b>${sgd(d.share)}</b></span></div>
+      <div class="small muted">${d.members.map(esc).join(', ')}</div></div>`;
+  }
+  html+=`</div><div class="card"><h2>By person</h2><div class="tbl-wrap"><table><thead><tr><th>Name</th><th>Paid</th><th>Share</th></tr></thead><tbody>`;
+  for(const [n,p] of Object.entries(c.P)) html+=`<tr><td>${esc(n)}</td><td>${sgd(p.paid)}</td><td>${sgd(p.share)}</td></tr>`;
+  html+=`</tbody></table></div><p class="small muted">Amounts in INR are converted at ₹${fx()} per SGD. Settle-up is worked out per family.</p></div>`;
+  v.innerHTML=html;
+}
+async function saveConfig(cfg, msg){
+  const txt=JSON.stringify(cfg,null,1);
+  try{
+    const sha=await putFile('config.json', b64e(txt), S.configSha, msg);
+    store.set('sg_blob_'+sha, txt);
+    S.config=normalizeConfig(cfg); S.configSha=sha; S.treeSha=null;
+    return true;
+  }catch(e){
+    if(e.status===409||e.status===422){ toast('Someone else changed settings. Refreshed — try again.'); await refresh(true,true); }
+    else toast(e.message||'Could not save.');
+    return false;
+  }
+}
+
+// ----- people -----
+function shareLink(){ return location.origin + location.pathname + '#k=' + encodeURIComponent(S.token||''); }
+function renderPeople(){
+  const v=$('#v-people');
+  const draft=S.draftPeople || JSON.parse(JSON.stringify(people()));
+  S.draftPeople=draft;
+  const used=new Set(); S.expenses.forEach(e=>{ used.add(e.paidBy); Object.keys(e.split||{}).forEach(n=>used.add(n)); });
+  let html=`<div class="card"><h2>Share this trip</h2>
+    <p class="small muted">Anyone with this link can add and edit expenses. Share it only in your family WhatsApp group.</p>
+    <button type="button" class="btn primary" id="p-copy">Copy share link</button>
+    <div class="field"><label for="p-me">On this phone, I am</label><select id="p-me"><option value="">Choose your name</option>${people().map(p=>`<option value="${esc(p.name)}"${p.name===S.me?' selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+    <p class="small muted">Used as the default "Paid by" on this phone.</p></div>`;
+  html+=`<div class="card"><h2>People &amp; families</h2>
+    <p class="small muted">Share 1 = full share, 0.5 = half (e.g. kids at meals), 0 = never included by default. Changes apply to new expenses; old ones keep the shares they were saved with.</p>
+    <div class="person person-head"><span>Name</span><span>Family</span><span>Share</span><span></span></div>`;
+  draft.forEach((p,i)=>{
+    html+=`<div class="person"><span class="nm">${esc(p.name)}</span>
+      <input type="text" id="pf-${i}" data-i="${i}" data-k="family" value="${esc(p.family||'')}" aria-label="Family of ${esc(p.name)}">
+      <select id="pw-${i}" data-i="${i}" data-k="weight" aria-label="Share for ${esc(p.name)}">${[1,0.75,0.5,0.25,0].map(w=>`<option value="${w}"${Number(p.weight)===w?' selected':''}>${w}</option>`).join('')}</select>
+      ${used.has(p.name)?'<span></span>':`<button type="button" class="x" data-rm="${i}" aria-label="Remove ${esc(p.name)}">×</button>`}</div>`;
+  });
+  html+=`<div class="row"><div class="field grow"><label for="p-new">Add a person</label><input id="p-new" type="text" placeholder="Name"></div><button type="button" class="btn ghost" id="p-add">Add</button></div>
+    <button type="button" class="btn primary" id="p-save">Save people</button></div>
+    <div class="card"><h2>This phone</h2><button type="button" class="btn ghost" id="p-forget">Forget the access key on this phone</button></div>`;
+  v.innerHTML=html;
+}
+
+// ---------- events ----------
+document.addEventListener('click', async ev=>{
+  const t=ev.target.closest('button,[data-id]'); if(!t) return;
+  if(t.dataset.photo){ ev.stopPropagation(); return openPhoto(t.dataset.photo); }
+  if(t.closest('#tabs') && t.dataset.v){ setView(t.dataset.v); return; }
+  if(t.dataset.p){ const n=t.dataset.p; S.split.has(n)?S.split.delete(n):S.split.add(n); renderSplit(); return; }
+  if(t.dataset.fam){ const m=families().get(t.dataset.fam)||[]; const all=m.every(x=>S.split.has(x)); m.forEach(x=>all?S.split.delete(x):S.split.add(x)); renderSplit(); return; }
+  if(t.dataset.id && t.classList.contains('exp')){ return startEdit(t.dataset.id); }
+  if(t.dataset.c){ S.cur=t.dataset.c; renderForm(); renderPreview(); return; }
+  if(t.dataset.rm!=null){ S.draftPeople.splice(Number(t.dataset.rm),1); renderPeople(); return; }
+  switch(t.id){
+    case 'refresh': return refresh(true);
+    case 'f-all': people().forEach(p=>{ if(weightOf(p.name)>0) S.split.add(p.name); }); return renderSplit();
+    case 'f-none': S.split.clear(); return renderSplit();
+    case 'f-cancel': resetForm(); return setView('list');
+    case 'f-del': return onDelete();
+    case 'f-photo-clear': S.photoFile=null; S.photoRemoved=true; $('#f-photo').value=''; return setThumb(null,false);
+    case 'modal-close': return closePhoto();
+    case 's-save': return unlock();
+    case 'b-fx-save': {
+      const n=parseFloat($('#b-fx').value); if(!(n>0)) return toast('Enter a rate above zero.');
+      t.disabled=true; const ok=await saveConfig({...S.config, fx:Math.round(n*100)/100}, `Rate: ₹${n}/SGD`); t.disabled=false;
+      if(ok){ toast('Rate updated'); renderAll(); } return;
+    }
+    case 'b-copy': return copyText(summaryText(compute()), 'Summary copied — paste it in WhatsApp');
+    case 'p-copy': return copyText(shareLink(), 'Link copied — paste it in WhatsApp');
+    case 'p-add': {
+      const n=$('#p-new').value.trim(); if(!n) return;
+      if(S.draftPeople.some(p=>p.name.toLowerCase()===n.toLowerCase())) return toast('That name is already on the list.');
+      S.draftPeople.push({name:n, family:n, weight:1}); return renderPeople();
+    }
+    case 'p-save': {
+      const clean=S.draftPeople.map(p=>({name:p.name, family:(p.family||'').trim()||p.name, weight:Number(p.weight)}));
+      t.disabled=true; const ok=await saveConfig({...S.config, people:clean}, 'Update people'); t.disabled=false;
+      if(ok){ S.draftPeople=null; toast('People saved'); renderAll(); } return;
+    }
+    case 'p-forget':
+      store.del('sg_token'); S.token=null; history.replaceState(null,'',location.pathname); return showSetup();
+  }
+});
+document.addEventListener('keydown', ev=>{
+  const t=ev.target; if((ev.key==='Enter'||ev.key===' ') && t.classList && t.classList.contains('exp')){ ev.preventDefault(); startEdit(t.dataset.id); }
+  if(ev.key==='Escape' && !$('#modal').hidden) closePhoto();
+});
+document.addEventListener('input', ev=>{
+  const t=ev.target;
+  if(t.id==='f-amt') renderPreview();
+  if(t.dataset && t.dataset.i!=null && S.draftPeople){ const p=S.draftPeople[Number(t.dataset.i)]; if(p) p[t.dataset.k] = t.dataset.k==='weight' ? Number(t.value) : t.value; }
+});
+document.addEventListener('change', ev=>{
+  const t=ev.target;
+  if(t.id==='p-me'){ S.me=t.value||null; t.value?store.set('sg_me',t.value):store.del('sg_me'); if(!S.editing) $('#f-paid').value=S.me||$('#f-paid').value; toast(S.me?`Hi ${S.me}!`:'Cleared'); }
+  if(t.id==='f-photo' && t.files && t.files[0]){ S.photoFile=t.files[0]; S.photoRemoved=false; setThumb(URL.createObjectURL(t.files[0])); }
+});
+$('#f').addEventListener('submit', onSave);
+
+async function copyText(text, ok){
+  try{ await navigator.clipboard.writeText(text); toast(ok); }
+  catch(e){
+    const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); toast(ok); }catch(_){ toast('Copy failed. Long-press to copy instead.'); }
+    ta.remove();
+  }
+}
+async function openPhoto(path){
+  const m=$('#modal'), img=$('#modal-img'), msg=$('#modal-msg');
+  m.hidden=false; img.hidden=true; msg.hidden=false; msg.textContent='Loading photo…';
+  try{
+    const r=await gh(`/repos/${REPO}/contents/${path}?ref=${BRANCH}`,{accept:'application/vnd.github.raw'});
+    const blob=new Blob([await r.blob()],{type:'image/jpeg'});
+    img.src=URL.createObjectURL(blob); img.hidden=false; msg.hidden=true;
+  }catch(e){ msg.textContent='Could not load the photo. '+(e.message||''); }
+}
+function closePhoto(){ const img=$('#modal-img'); $('#modal').hidden=true; if(img.src) URL.revokeObjectURL(img.src); img.removeAttribute('src'); }
+
+async function unlock(){
+  const v=$('#s-token').value.trim(); if(!v) return;
+  S.token=v; const btn=$('#s-save'); btn.disabled=true; btn.textContent='Checking…';
+  try{
+    await load(true); store.set('sg_token',v);
+    history.replaceState(null,'','#k='+encodeURIComponent(v));
+    $('#s-token').value=''; showApp(); resetForm(); renderAll(); renderSub(); setView('people');
+    toast('Unlocked. Copy the share link below.');
+  }catch(e){
+    S.token=null;
+    showSetup(e.status===401||e.status===403 ? 'That key was not accepted. Check it has Contents: Read and write on sg-trip.' : e.status===404 ? 'Key works, but the trip data was not found.' : e.message);
+  }finally{ btn.disabled=false; btn.textContent='Unlock'; }
+}
+
+// ---------- start ----------
+async function start(){
+  const m=location.hash.match(/k=([^&]+)/);
+  if(m){ S.token=decodeURIComponent(m[1]); store.set('sg_token',S.token); }
+  else S.token=store.get('sg_token');
+  if(S.token && !m) history.replaceState(null,'','#k='+encodeURIComponent(S.token));
+  S.me=store.get('sg_me');
+  const sv=store.get('sg_view'); if(['add','list','bal','people'].includes(sv)) S.view=sv;
+  S.config=normalizeConfig(null);
+  if(!S.token){ showSetup(); return; }
+  showApp(); resetForm(); renderAll();
+  await refresh(true);
+  resetForm(); renderAll();
+  if(!S.me && S.token){ setView('people'); toast('Pick your name so "Paid by" fills in for you.', 3500); }
+}
+setInterval(()=>{ if(document.visibilityState==='visible' && S.token && !S.busy && $('#v-setup').hidden) refresh(false,true); }, 30000);
+document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && S.token && $('#v-setup').hidden) refresh(false,true); });
+start();
+})();
+</script>
+</body>
+</html>
