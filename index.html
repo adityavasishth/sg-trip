@@ -106,6 +106,7 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
   background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer}
 .exp .t{font-weight:600;display:flex;gap:6px;align-items:center;min-width:0;overflow-wrap:anywhere}
 .exp .m{grid-column:1;font-size:.83rem;color:var(--muted);overflow-wrap:anywhere}
+.exp .when{font-size:.75rem;opacity:.85}
 .exp .a{grid-row:1/3;grid-column:2;text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
 .exp .a small{display:block;font-weight:400;color:var(--muted);font-size:.78rem}
 .ph-btn{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:2px 6px;cursor:pointer;display:inline-flex;align-items:center}
@@ -431,7 +432,11 @@ async function load(force){
   S.treeSha=tree.sha;
   return true;
 }
-const byDate=(a,b)=>(b.date||'').localeCompare(a.date||'') || (b.createdAt||0)-(a.createdAt||0);
+// Newest-added first; entries without a timestamp fall back to their bill date.
+const addedAt=e=>e.createdAt||Date.parse((e.date||'1970-01-01')+'T12:00:00')||0;
+const byDate=(a,b)=>addedAt(b)-addedAt(a) || (b.date||'').localeCompare(a.date||'');
+const localDay=t=>{ const d=new Date(t); d.setMinutes(d.getMinutes()-d.getTimezoneOffset()); return d.toISOString().slice(0,10); };
+const dayLabel=iso=>new Date(iso+'T12:00:00').toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short'});
 
 async function refresh(force, quiet){
   if(S.busy) return;
@@ -664,16 +669,19 @@ function renderList(){
   } else {
     let day=null;
     for(const e of S.expenses){
-      if(e.date!==day){
+      const added=localDay(addedAt(e));
+      if(added!==day){
         if(day!==null) html+='</div>';
-        day=e.date;
-        const d=new Date((e.date||today())+'T12:00:00');
-        html+=`<h3 class="day">${d.toLocaleDateString('en-SG',{weekday:'short',day:'numeric',month:'short'})}</h3><div class="exp-list">`;
+        day=added;
+        html+=`<h3 class="day">Added ${added===today()?'today':dayLabel(added)}</h3><div class="exp-list">`;
       }
+      const when=e.createdAt?new Date(e.createdAt).toLocaleTimeString('en-SG',{hour:'numeric',minute:'2-digit'}):'';
+      const billDay=e.date&&e.date!==added?`bill from ${dayLabel(e.date)}`:'';
+      const sub=[when&&`added ${when}`,billDay].filter(Boolean).join(' · ');
       const amtS = e.currency==='INR' ? `₹${Number(e.amount).toLocaleString('en-IN')}<small>${sgd(toSGD(e))}</small>` : `${sgd(e.amount)}<small>${inr(e.amount)}</small>`;
       html+=`<div class="exp" role="button" tabindex="0" data-id="${esc(e.id)}">
         <div class="t">${esc(e.title)} ${e.photo?`<button type="button" class="ph-btn" data-photo="${esc(e.photo)}" aria-label="View receipt">${photoIcon}</button>`:''}</div>
-        <div class="m">${esc(e.paidBy)} paid · for ${esc(splitLabel(e))}</div>
+        <div class="m">${esc(e.paidBy)} paid · for ${esc(splitLabel(e))}${sub?`<br><span class="when">${esc(sub)}</span>`:''}</div>
         <div class="a">${amtS}</div></div>`;
     }
     html+='</div>';
