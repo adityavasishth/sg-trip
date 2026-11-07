@@ -1,0 +1,14 @@
+{
+ "fx": 75,
+ "people": [
+  {"name": "Aditya", "family": "Aditya's family", "weight": 1},
+  {"name": "Garima", "family": "Aditya's family", "weight": 1},
+  {"name": "Arin", "family": "Aditya's family", "weight": 1},
+  {"name": "Shreyan", "family": "Aditya's family", "weight": 1},
+  {"name": "Kavya", "family": "Kavya & Ahana", "weight": 1},
+  {"name": "Ahana", "family": "Kavya & Ahana", "weight": 1},
+  {"name": "Jia", "family": "Jia, Sayan & Shirpi", "weight": 1},
+  {"name": "Sayan", "family": "Jia, Sayan & Shirpi", "weight": 1},
+  {"name": "Shirpi", "family": "Jia, Sayan & Shirpi", "weight": 1}
+ ]
+}
