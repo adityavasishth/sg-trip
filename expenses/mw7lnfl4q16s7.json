@@ -1,0 +1,21 @@
+{
+ "id": "mw7lnfl4q16s7",
+ "title": "Lumch at casa bites",
+ "amount": 141.5,
+ "currency": "SGD",
+ "paidBy": "Aditya",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Shilp": 1,
+  "Sayan": 1,
+  "Jia": 1
+ },
+ "date": "2026-11-08",
+ "photo": "photos/mw7lnfl4q16s7-mw7lnfnr.jpg",
+ "createdAt": 1794128276414,
+ "updatedAt": 1794128276414,
+ "addedBy": null
+}
