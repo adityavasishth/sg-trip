@@ -355,7 +355,22 @@ function compute(){
     F[f].paid+=p.paid; F[f].share+=p.share; F[f].members.push(n);
   }
   for(const f of Object.values(F)) f.net=f.paid-f.share;
-  return {total,P,F,transfers:settle(F)};
+  // family-by-family: what each family owes each other family directly, netted per pair
+  const D={};
+  for(const e of S.expenses){
+    const amt=toSGD(e); if(!isFinite(amt)) continue;
+    const entries=Object.entries(e.split||{});
+    const W=entries.reduce((a,[,w])=>a+Number(w),0); if(W<=0) continue;
+    const pf=familyOf(e.paidBy);
+    for(const [n,w] of entries){ const f=familyOf(n); if(f===pf) continue; const k=f+'\u0000'+pf; D[k]=(D[k]||0)+amt*Number(w)/W; }
+  }
+  const fams=Object.keys(F), pairs=[];
+  for(let i=0;i<fams.length;i++) for(let j=i+1;j<fams.length;j++){
+    const a=fams[i], b=fams[j], x=(D[a+'\u0000'+b]||0)-(D[b+'\u0000'+a]||0);
+    if(Math.abs(x)>0.009) pairs.push(x>0?{from:a,to:b,amt:x}:{from:b,to:a,amt:-x});
+  }
+  pairs.sort((p,q)=>q.amt-p.amt);
+  return {total,P,F,transfers:settle(F),pairs};
 }
 function settle(F){
   const cred=[], debt=[];
@@ -547,7 +562,7 @@ async function compress(file){
   } finally { URL.revokeObjectURL(url); }
 }
 // ----- receipt reading (Claude API, key stays on this phone) -----
-const APP_VERSION='3 (8 Nov · receipts + newest first)';
+const APP_VERSION='4 (8 Nov · family-by-family settle-up)';
 const AI_MODEL='claude-haiku-5-5';
 const aiKey = () => store.get('sg_ai_key');
 function ocrMsg(html){ const el=$('#f-ocr'); if(html){ el.innerHTML=html; el.hidden=false; } else { el.hidden=true; el.innerHTML=''; } }
@@ -691,21 +706,28 @@ function renderList(){
 }
 
 // ----- balances -----
+const settleMode = () => store.get('sg_settle')==='fewest' ? 'fewest' : 'direct';
+const settleList = c => settleMode()==='fewest' ? c.transfers : c.pairs;
 function summaryText(c){
-  const lines=['*SG trip — who pays whom*', `Trip total: ${sgd(c.total)} (${inr(c.total)}) · rate ₹${fx()}/SGD`, ''];
-  if(!c.transfers.length) lines.push('All square — nobody owes anything.');
-  c.transfers.forEach(t=>lines.push(`• ${t.from} → ${t.to}: ${sgd(t.amt)} (${inr(t.amt)})`));
+  const lines=['*SG trip — who pays whom*', `Trip total: ${sgd(c.total)} (${inr(c.total)}) · rate ₹${fx()}/SGD`,
+    settleMode()==='fewest' ? '(fewest payments)' : '(family by family)', ''];
+  const list=settleList(c);
+  if(!list.length) lines.push('All square — nobody owes anything.');
+  list.forEach(t=>lines.push(`• ${t.from} → ${t.to}: ${sgd(t.amt)} (${inr(t.amt)})`));
   lines.push('');
   for(const [f,v] of Object.entries(c.F)) lines.push(`${f}: paid ${sgd(v.paid)}, share ${sgd(v.share)}`);
   return lines.join('\n');
 }
 function renderBal(){
   const v=$('#v-bal'); const c=compute();
-  let html=`<div class="card"><h2>Who pays whom</h2>`;
+  const mode=settleMode(), list=settleList(c);
+  let html=`<div class="card"><h2>Who pays whom</h2>
+    <div class="seg" role="group" aria-label="How to settle"><button type="button" data-sm="direct" class="${mode==='direct'?'on':''}" style="flex:1">Family by family</button><button type="button" data-sm="fewest" class="${mode==='fewest'?'on':''}" style="flex:1">Fewest payments</button></div>
+    <p class="small muted">${mode==='direct' ? 'What each family owes each other family for bills the other one paid (both ways netted off).' : 'Same totals, but combined into as few payments as possible, so a family may pay someone it never shared a bill with.'}</p>`;
   if(!S.expenses.length) html+=`<p class="muted small">Nothing to settle yet.</p>`;
-  else if(!c.transfers.length) html+=`<p class="muted small">All square. Nobody owes anything.</p>`;
-  else c.transfers.forEach(t=>{
-    html+=`<div class="xfer"><div class="who">${esc(t.from)} → ${esc(t.to)}</div><div class="amt">${sgd(t.amt)}<small>${inr(t.amt)}</small></div><div class="sub">settle over UPI</div></div>`;
+  else if(!list.length) html+=`<p class="muted small">All square. Nobody owes anything.</p>`;
+  else list.forEach(t=>{
+    html+=`<div class="xfer"><div class="who">${esc(t.from)} → ${esc(t.to)}</div><div class="amt">${sgd(t.amt)}<small>${inr(t.amt)}</small></div><div class="sub">${esc(t.from)} pays ${esc(t.to)}</div></div>`;
   });
   html+=`<div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
     <button type="button" class="btn ghost" id="b-fx-save">Update</button></div>
@@ -780,6 +802,7 @@ document.addEventListener('click', async ev=>{
   if(t.dataset.p){ const n=t.dataset.p; S.split.has(n)?S.split.delete(n):S.split.add(n); renderSplit(); return; }
   if(t.dataset.fam){ const m=families().get(t.dataset.fam)||[]; const all=m.every(x=>S.split.has(x)); m.forEach(x=>all?S.split.delete(x):S.split.add(x)); renderSplit(); return; }
   if(t.dataset.id && t.classList.contains('exp')){ return startEdit(t.dataset.id); }
+  if(t.dataset.sm){ store.set('sg_settle',t.dataset.sm); renderBal(); return; }
   if(t.dataset.c){ S.cur=t.dataset.c; renderForm(); renderPreview(); return; }
   if(t.dataset.rm!=null){ S.draftPeople.splice(Number(t.dataset.rm),1); renderPeople(); return; }
   switch(t.id){
