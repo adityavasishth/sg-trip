@@ -125,6 +125,15 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 .bill.minus span:last-child{color:var(--good)}
 .bill.total{font-weight:700;border-top:2px solid var(--ink)}
 .hero{display:grid;gap:10px;padding:18px;border-radius:16px;background:var(--accent-soft);border:1px solid var(--accent)}
+.owes{width:100%;border-collapse:collapse;font-size:.92rem}
+.owes th{text-align:left;font-size:.78rem;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:6px 6px 8px;border-bottom:2px solid var(--line)}
+.owes td{padding:12px 6px;vertical-align:top;border-top:1px solid var(--line);text-align:left}
+.owes td.amt{text-align:right;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.owes td.amt small{display:block;font-weight:400;color:var(--muted)}
+.owes tr.bills-row td{border-top:0;padding:0 6px 10px}
+.owes tr.zero td{color:var(--muted)}
+.owes tr.me td:first-child,.owes tr.me td:nth-child(2){font-weight:700}
+.owes .arrow{color:var(--muted)}
 .hero .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .hero .fam-name{font-size:1.1rem}
 .you{background:var(--accent);color:var(--on-accent);border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700}
@@ -755,21 +764,37 @@ const plural = n => / & |, /.test(n);
 const pays_ = n => plural(n) ? 'pay' : 'pays';
 // Whole-rupee figures for a family that always add up: the final amount is exactly the
 // sum of its (rounded) payments, and "share − paid" equals it to the rupee.
-function famRupees(c, fam){
-  const R=t=>Math.round(t.amt*fx());
-  const net = c.transfers.filter(t=>t.to===fam).reduce((a,t)=>a+R(t),0) - c.transfers.filter(t=>t.from===fam).reduce((a,t)=>a+R(t),0);
-  const paid = Math.round((c.F[fam]?c.F[fam].paid:0)*fx());
-  return {net, paid, share: paid - net};
-}
 const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
+// Everything on the settle-up screen is worked out in whole rupees, starting from what each
+// pair of families owes each other. Per-family totals and payments are built from those same
+// rounded numbers, so every figure on screen adds up to the rupee.
 function myFamily(){ return S.me && person(S.me) ? familyOf(S.me) : null; }
+function money(c){
+  const pairs=c.pairs.map(p=>({...p, r:Math.round(p.amt*fx())})).filter(p=>p.r>0);
+  const net={}; Object.keys(c.F).forEach(f=>net[f]=0);
+  pairs.forEach(p=>{ net[p.from]-=p.r; net[p.to]+=p.r; });
+  const cred=[], debt=[];
+  for(const [f,n] of Object.entries(net)){ if(n>0) cred.push({f,n}); else if(n<0) debt.push({f,n:-n}); }
+  cred.sort((x,y)=>y.n-x.n); debt.sort((x,y)=>y.n-x.n);
+  const transfers=[]; let i=0,j=0;
+  while(i<debt.length && j<cred.length){
+    const x=Math.min(debt[i].n,cred[j].n);
+    if(x>0) transfers.push({from:debt[i].f,to:cred[j].f,r:x});
+    debt[i].n-=x; cred[j].n-=x; if(!debt[i].n) i++; if(!cred[j].n) j++;
+  }
+  return {pairs, net, transfers};
+}
+const toSgd = r => sgd(r/fx());
 function summaryText(c){
-  const L=['*SG trip — settle up*',''];
-  if(!c.transfers.length) L.push('All square — nobody owes anything.');
-  c.transfers.forEach((t,i)=>L.push(`${i+1}. ${t.from} ${pays_(t.from)} ${t.to} *${rs(Math.round(t.amt*fx()))}*`));
-  L.push('','Each family:');
-  for(const f of Object.keys(c.F)){ const r=famRupees(c,f);
-    L.push(`• ${f}: share ${rs(r.share)} − paid ${rs(r.paid)} = ${r.net<0?`pays ${rs(-r.net)}`:r.net>0?`gets back ${rs(r.net)}`:'square'}`); }
+  const M=money(c), fams=Object.keys(c.F), L=['*SG trip — who owes whom*',''];
+  for(let i=0;i<fams.length;i++) for(let j=i+1;j<fams.length;j++){
+    const p=M.pairs.find(x=>(x.from===fams[i]&&x.to===fams[j])||(x.from===fams[j]&&x.to===fams[i]));
+    L.push(p ? `• ${p.from} ${pays_(p.from)} ${p.to}: *${rs(p.r)}*` : `• ${fams[i]} ↔ ${fams[j]}: nothing`);
+  }
+  if(M.transfers.length && M.transfers.length<M.pairs.length){
+    L.push('','Or, in fewer payments (same result — use one list, not both):');
+    M.transfers.forEach((t,i)=>L.push(`${i+1}. ${t.from} ${pays_(t.from)} ${t.to} ${rs(t.r)}`));
+  }
   L.push('',`Rate: ₹${fx()} per SGD`);
   return L.join('\n');
 }
@@ -787,45 +812,36 @@ function famBills(fam){
   }
   return out.sort((p,q)=>(p.date||'').localeCompare(q.date||''));
 }
-function famCard(c, fam, isMe){
+function pairBills(p, payerSide){
+  // bills behind one family-to-family amount
+  const row=(x,minus)=>`<div class="bill${minus?' minus':''}"><span>${esc(x.title)}<small>${shortDate(x.date)} · ${esc(x.paidBy)} paid ${sgd(x.total)} · for ${esc(x.people.join(', '))}</small></span><span>${minus?'− ':''}${sgd(x.amt)}</span></div>`;
+  const sum=a=>a.reduce((t,x)=>t+x.amt,0);
+  let h=`<details><summary class="link" style="list-style:none;cursor:pointer;font-size:.85rem">See the ${p.plus.length+p.minus.length} bills</summary><div class="bills">`;
+  h+=`<div class="small muted">${esc(p.from)}'s share of bills ${esc(p.to)} paid</div>`+p.plus.map(x=>row(x,false)).join('')+`<div class="bill"><span>Subtotal</span><span>${sgd(sum(p.plus))}</span></div>`;
+  if(p.minus.length) h+=`<div class="small muted" style="margin-top:8px">Minus ${esc(p.to)}'s share of bills ${esc(p.from)} paid</div>`+p.minus.map(x=>row(x,true)).join('')+`<div class="bill minus"><span>Subtotal</span><span>− ${sgd(sum(p.minus))}</span></div>`;
+  return h+`<div class="bill total"><span>${esc(p.from)} owe${plural(p.from)?'':'s'} ${esc(p.to)}</span><span>${rs(p.r)}</span></div></div></details>`;
+}
+function famCard(c, M, fam, isMe){
   const d=c.F[fam]; if(!d) return '';
-  const r=famRupees(c,fam), F=esc(fam), pl=plural(fam);
-  const pays=c.transfers.filter(t=>t.from===fam), gets=c.transfers.filter(t=>t.to===fam);
-  const sum=a=>a.reduce((x,p)=>x+p.amt,0);
-  const R=t=>rs(Math.round(t.amt*fx()));
-  const cls = r.net<0 ? '' : r.net>0 ? ' good' : ' even';
+  const F=esc(fam), pl=plural(fam)||isMe;
+  const Subj = isMe ? 'You' : F, obj = isMe ? 'you' : F;
+  const net=M.net[fam]||0;
+  const cls = net<0 ? '' : net>0 ? ' good' : ' even';
+  const mine=M.pairs.filter(p=>p.from===fam||p.to===fam).sort((x,y)=>(x.to===fam)-(y.to===fam));
   let h=`<div class="hero${cls}"><div class="hd"><b class="fam-name">${F}</b>${isMe?'<span class="you">You</span>':''}</div>
     <div class="small muted">${d.members.map(esc).join(', ')}</div>`;
-  if(r.net<0){
-    h+=`<div class="big">${pl?'Pay':'Pays'} ${rs(-r.net)}<small>${sgd(-d.net)}</small></div>
-      ${pays.map(t=>`<div class="to">→ to <b>${esc(t.to)}</b>${pays.length>1?` <span class="num">${R(t)}</span>`:''}</div>`).join('')}`;
-  }else if(r.net>0){
-    h+=`<div class="big">${pl?'Get':'Gets'} back ${rs(r.net)}<small>${sgd(d.net)}</small></div>
-      ${gets.map(t=>`<div class="to">← from <b>${esc(t.from)}</b> <span class="num">${R(t)}</span></div>`).join('')}
-      <div class="small">Nothing to pay.</div>`;
-  }else{
-    h+=`<div class="big">All square</div><div class="small">Nothing to pay, nothing to collect.</div>`;
-  }
-  h+=`<div class="math"><div><span>Share of all bills</span><span>${rs(r.share)}</span></div>
-      <div><span>Minus what they already paid</span><span>− ${rs(r.paid)}</span></div>
-      <div class="res"><span>${r.net<0?'Still to pay':r.net>0?'To get back':'Difference'}</span><span>${rs(Math.abs(r.net))}</span></div></div>`;
-  // Explain combined payments, so nobody is surprised that money "skips" a family.
-  const toMe=c.pairs.filter(p=>p.to===fam), fromMe=c.pairs.filter(p=>p.from===fam);
-  const notes=[];
-  if(r.net<0){
-    const passedIn=toMe.filter(p=>!gets.some(t=>t.from===p.from));
-    if(passedIn.length) notes.push(`Why not ${rs(Math.round(sum(fromMe)*fx()))}? That's what ${F} ${pl?'owe':'owes'} for bills other families paid. But ${passedIn.map(p=>`${esc(p.from)} owe${plural(p.from)?'':'s'} ${F} ${rs(Math.round(p.amt*fx()))}`).join(' and ')}, and pay${passedIn.length>1||plural(passedIn[0].from)?'':'s'} it straight to ${pays.map(t=>esc(t.to)).join(' and ')} instead. So ${F} only ${pl?'pay':'pays'} the difference.`);
-    const passedOut=fromMe.filter(p=>!pays.some(t=>t.to===p.to));
-    if(passedOut.length) notes.push(`This includes ${passedOut.map(p=>`${rs(Math.round(p.amt*fx()))} ${F} owe${pl?'':'s'} ${esc(p.to)}`).join(' and ')}. Instead of paying ${passedOut.map(p=>esc(p.to)).join(' and ')}, ${pl?'they pay':'it pays'} it straight to ${pays.map(t=>esc(t.to)).join(' and ')}. One payment fewer, same total.`);
-  }else if(r.net>0){
-    const offset=fromMe.filter(p=>p.amt>0.009);
-    const extra=gets.map(t=>{ const own=(c.pairs.find(p=>p.from===t.from&&p.to===fam)||{amt:0}).amt; return {t, passed:t.amt-own}; }).filter(x=>x.passed>0.009);
-    extra.forEach(({t,passed})=>{ const via=c.pairs.filter(p=>p.from===t.from&&p.to!==fam).map(p=>esc(p.to)); notes.push(`${esc(t.from)}'s ${rs(Math.round(t.amt*fx()))} includes ${rs(Math.round(passed*fx()))} ${plural(t.from)?'they':'it'} owed ${via.join(' and ')||'another family'}, passed on to ${F}. That's why ${via.join(' and ')||'they'} ${via.length===1&&!plural(via[0])?'pays':'pay'} ${F} less.`); });
-    if(offset.length) notes.push(`${F} also owed ${offset.map(p=>`${esc(p.to)} ${rs(Math.round(p.amt*fx()))}`).join(' and ')}. That's already taken off, so there's nothing to pay separately.`);
-  }
-  if(notes.length) h+=`<div class="note">${notes.join('<br><br>')}</div>`;
+  // every payment this family makes or receives, family by family
+  if(mine.length){
+    h+=`<div class="math">`;
+    mine.forEach(p=>{
+      const inbound=p.to===fam, other=inbound?p.from:p.to;
+      h+=`<div><span>${inbound?`<b>${esc(other)}</b> pay${plural(other)?'':'s'} ${obj}`:`${Subj} pay${pl?'':'s'} <b>${esc(other)}</b>`}</span><span style="color:var(${inbound?'--good':'--bad'})">${inbound?'+':'−'} ${rs(p.r)}</span></div>`;
+    });
+    if(mine.length>1) h+=`<div class="res"><span>Net: ${obj} ${net<0?(pl?'pay':'pays'):net>0?(pl?'receive':'receives'):(pl?'are':'is')+' square'}</span><span>${net?rs(Math.abs(net)):''}</span></div>`;
+    h+=`</div>`;
+  }else h+=`<div class="big">All square</div>`;
   const bills=famBills(fam);
-  h+=`<details><summary class="link" style="list-style:none;cursor:pointer">Check it bill by bill (${bills.length})</summary><div class="bills">
+  h+=`<details><summary class="link" style="list-style:none;cursor:pointer">All ${bills.length} bills for ${obj}</summary><div class="bills">
     <div class="bill"><span class="small muted">Bill</span><span class="small muted">Share · paid</span></div>`+
     bills.map(b=>`<div class="bill"><span>${esc(b.title)}<small>${shortDate(b.date)} · ${esc(b.paidBy)} paid ${sgd(b.total)} · for ${esc(b.who.join(', ')||'others')}</small></span><span>${sgd(b.share)}${b.paid?`<small>paid ${sgd(b.paid)}</small>`:''}</span></div>`).join('')+
     `<div class="bill total"><span>Total</span><span>${sgd(d.share)}<small>paid ${sgd(d.paid)}</small></span></div></div></details></div>`;
@@ -834,22 +850,46 @@ function famCard(c, fam, isMe){
 function renderBal(){
   const v=$('#v-bal'); const c=compute(); const mine=myFamily();
   if(!S.expenses.length){ v.innerHTML=`<div class="card"><h2>Settle up</h2><p class="muted small">Nothing to settle yet.</p></div>`; return; }
-  const n=c.transfers.length;
-  // the whole plan in one glance
-  let html=`<div class="card"><h2>Settle up</h2>
-    <p class="small">${n?`<b>${n} payment${n>1?'s':''}</b> settle the whole trip. Once ${n>1?'they are':'it is'} paid, every family is square.`:'All square. Nobody owes anything.'}</p>`;
-  c.transfers.forEach((t,i)=>{
-    const me = mine && (t.from===mine || t.to===mine);
-    html+=`<div class="pay${me?' mine':''}"><span class="n">${i+1}</span><span><b>${esc(t.from)}</b> ${pays_(t.from)} <b>${esc(t.to)}</b></span><span class="a">${rs(Math.round(t.amt*fx()))}<small>${sgd(t.amt)}</small></span></div>`;
+  const M=money(c), fams=Object.keys(c.F);
+  // 1) Who owes whom: one row for every pair of families, zero rows included
+  const rows=[];
+  for(let i=0;i<fams.length;i++) for(let j=i+1;j<fams.length;j++){
+    const a=fams[i], b=fams[j];
+    const p=M.pairs.find(x=>(x.from===a&&x.to===b)||(x.from===b&&x.to===a));
+    rows.push(p ? {p, from:p.from, to:p.to, r:p.r} : {from:a, to:b, r:0});
+  }
+  rows.sort((x,y)=>{ const m=r=>mine&&(r.from===mine||r.to===mine)?1:0; return m(y)-m(x) || y.r-x.r; });
+  const owing=rows.filter(r=>r.r>0).length;
+  let html=`<div class="card"><h2>Who owes whom</h2>
+    <p class="small muted">Each row is one family paying another, after their bills both ways are netted off.</p>
+    <table class="owes"><thead><tr><th>Pays</th><th>To</th><th style="text-align:right">Amount</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const me=mine&&(r.from===mine||r.to===mine);
+    if(r.r>0){
+      html+=`<tr class="${me?'me':''}"><td>${esc(r.from)}${mine===r.from?' <span class="you">You</span>':''}</td><td>${esc(r.to)}${mine===r.to?' <span class="you">You</span>':''}</td><td class="amt">${rs(r.r)}<small>${toSgd(r.r)}</small></td></tr>
+        <tr class="bills-row"><td colspan="3">${pairBills(r.p)}</td></tr>`;
+    }else{
+      html+=`<tr class="zero"><td>${esc(r.from)}</td><td>${esc(r.to)}</td><td class="amt">Nothing</td></tr>`;
+    }
   });
-  html+=`<button type="button" class="btn ghost" id="b-copy">Copy for WhatsApp</button></div>`;
-  // one card per family, debtors first; the viewer's family on top
-  const fams=Object.keys(c.F).sort((a,b)=>(b===mine)-(a===mine) || famRupees(c,a).net-famRupees(c,b).net);
+  html+=`</tbody></table>
+    <p class="small">${owing?`Make these ${owing} payment${owing>1?'s':''} and everyone is square.`:'All square. Nobody owes anything.'}</p>
+    <button type="button" class="btn ghost" id="b-copy">Copy for WhatsApp</button>`;
+  // 2) optional shortcut
+  if(M.transfers.length && M.transfers.length<owing){
+    html+=`<details class="note"><summary style="cursor:pointer;font-weight:600">Want fewer payments? (${M.transfers.length} instead of ${owing})</summary>
+      <p class="small" style="margin:8px 0">Same result for every family, just combined so nobody passes money along:</p>
+      ${M.transfers.map((t,i)=>`<div class="pay"><span class="n">${i+1}</span><span><b>${esc(t.from)}</b> ${pays_(t.from)} <b>${esc(t.to)}</b></span><span class="a">${rs(t.r)}</span></div>`).join('')}
+      <p class="small muted" style="margin-top:6px">Use either list, not both.</p></details>`;
+  }
+  html+=`</div>`;
+  // 3) each family's view
+  const order=fams.slice().sort((a,b)=>(b===mine)-(a===mine) || (M.net[a]||0)-(M.net[b]||0));
   html+=`<h2 class="day" style="margin:8px 2px 0">Each family</h2>`;
-  fams.forEach(f=>{ html+=`<div class="card">${famCard(c,f,f===mine)}</div>`; });
+  order.forEach(f=>{ html+=`<div class="card">${famCard(c,M,f,f===mine)}</div>`; });
   html+=`<div class="card"><div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
     <button type="button" class="btn ghost" id="b-fx-save">Update</button></div>
-    <p class="small muted">Trip total ${rs(Math.round(c.total*fx()))} (${sgd(c.total)}). ${mine?'':'Pick your name on the People tab to see your family first.'}</p></div>`;
+    <p class="small muted">Trip total ${rs(c.total*fx())} (${sgd(c.total)}). ${mine?'':'Pick your name on the People tab to see your family first.'}</p></div>`;
   v.innerHTML=html;
 }
 async function saveConfig(cfg, msg){
