@@ -1,0 +1,16 @@
+{
+ "id": "mw7zedltt5o16",
+ "title": "Ice cream and cotton candy for kids",
+ "amount": 39,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Sayan": 1
+ },
+ "date": "2026-11-08",
+ "photo": "photos/mw7zedltt5o16-mw7zedog.jpg",
+ "createdAt": 1794151367937,
+ "updatedAt": 1794151367937,
+ "addedBy": "Sayan"
+}
