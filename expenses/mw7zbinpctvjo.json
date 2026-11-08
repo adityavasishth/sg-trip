@@ -1,0 +1,23 @@
+{
+ "id": "mw7zbinpctvjo",
+ "title": "Cab from Arab street to paradox",
+ "amount": 59.96,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Sayan": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-08",
+ "photo": "photos/mw7zbinpctvjo-mw7zbiox.jpg",
+ "createdAt": 1794151234236,
+ "updatedAt": 1794151234236,
+ "addedBy": "Sayan"
+}
