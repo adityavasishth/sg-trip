@@ -125,6 +125,9 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 .bill.minus span:last-child{color:var(--good)}
 .bill.total{font-weight:700;border-top:2px solid var(--ink)}
 .hero{display:grid;gap:10px;padding:18px;border-radius:16px;background:var(--accent-soft);border:1px solid var(--accent)}
+.hero .hd{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.hero .fam-name{font-size:1.1rem}
+.you{background:var(--accent);color:var(--on-accent);border-radius:999px;padding:2px 10px;font-size:.78rem;font-weight:700}
 .hero .lbl{font-size:.85rem;color:var(--muted);font-weight:600}
 .hero .big{font-family:var(--display);font-size:2.3rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
 .hero .big small{display:block;font-family:var(--body);font-size:.95rem;font-weight:500;color:var(--muted);margin-top:4px}
@@ -761,12 +764,14 @@ function famRupees(c, fam){
 const rs = n => '₹' + Math.round(n).toLocaleString('en-IN');
 function myFamily(){ return S.me && person(S.me) ? familyOf(S.me) : null; }
 function summaryText(c){
-  const lines=['*SG trip — final settle-up*', `Rate used: ₹${fx()} per SGD`, ''];
-  if(!c.transfers.length) lines.push('All square — nobody owes anything.');
-  c.transfers.forEach((t,i)=>lines.push(`${i+1}. ${t.from} ${pays_(t.from)} ${t.to}: *${rupees(t.amt)}* (${sgd(t.amt)})`));
-  lines.push('', 'Once these are paid, everyone is square.', '');
-  for(const f of Object.keys(c.F)){ const r=famRupees(c,f); lines.push(`${f}: share of bills ${rs(r.share)}, already paid ${rs(r.paid)}`); }
-  return lines.join('\n');
+  const L=['*SG trip — settle up*',''];
+  if(!c.transfers.length) L.push('All square — nobody owes anything.');
+  c.transfers.forEach((t,i)=>L.push(`${i+1}. ${t.from} ${pays_(t.from)} ${t.to} *${rs(Math.round(t.amt*fx()))}*`));
+  L.push('','Each family:');
+  for(const f of Object.keys(c.F)){ const r=famRupees(c,f);
+    L.push(`• ${f}: share ${rs(r.share)} − paid ${rs(r.paid)} = ${r.net<0?`pays ${rs(-r.net)}`:r.net>0?`gets back ${rs(r.net)}`:'square'}`); }
+  L.push('',`Rate: ₹${fx()} per SGD`);
+  return L.join('\n');
 }
 const shortDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-SG',{day:'numeric',month:'short'}) : '';
 function famBills(fam){
@@ -782,72 +787,69 @@ function famBills(fam){
   }
   return out.sort((p,q)=>(p.date||'').localeCompare(q.date||''));
 }
-function heroCard(c, fam){
+function famCard(c, fam, isMe){
   const d=c.F[fam]; if(!d) return '';
-  const net=Math.round(d.net*100)/100, r=famRupees(c,fam);
+  const r=famRupees(c,fam), F=esc(fam), pl=plural(fam);
   const pays=c.transfers.filter(t=>t.from===fam), gets=c.transfers.filter(t=>t.to===fam);
-  let h='';
-  if(net<-0.009){
-    h+=`<div class="hero"><div class="lbl">${esc(fam)} · your final amount</div>
-      <div class="big">You pay ${rs(-r.net)}<small>${sgd(-net)}</small></div>
-      <div class="to">${pays.map(t=>`to <b>${esc(t.to)}</b>${pays.length>1?` — ${rupees(t.amt)}`:''}`).join('<br>')}</div>
-      <div class="small">That's it. After this, your family is square with everyone.</div>`;
-  }else if(net>0.009){
-    h+=`<div class="hero good"><div class="lbl">${esc(fam)} · your final amount</div>
-      <div class="big">You get back ${rs(r.net)}<small>${sgd(net)}</small></div>
-      <div class="to">${gets.map(t=>`from <b>${esc(t.from)}</b> — ${rupees(t.amt)}`).join('<br>')}</div>
-      <div class="small">You don't need to pay anyone.</div>`;
-  }else{
-    h+=`<div class="hero even"><div class="lbl">${esc(fam)}</div><div class="big">You're all square</div><div class="small">Nothing to pay, nothing to collect.</div>`;
-  }
-  // the whole "why" in three lines
-  h+=`<div class="math"><div><span>Your family's share of all bills</span><span>${rs(r.share)}</span></div>
-      <div><span>Minus what your family already paid</span><span>− ${rs(r.paid)}</span></div>
-      <div class="res"><span>${net<-0.009?'Still to pay':net>0.009?'To get back':'Difference'}</span><span>${rs(Math.abs(r.net))}</span></div></div>`;
-  // explain the netting, so nobody is surprised by a different number elsewhere
-  const owedToMe=c.pairs.filter(p=>p.to===fam), iOwe=c.pairs.filter(p=>p.from===fam);
   const sum=a=>a.reduce((x,p)=>x+p.amt,0);
-  if(net<-0.009 && owedToMe.length){
-    h+=`<div class="note">Why not ${rupees(sum(iOwe))}? That's your share of bills other families paid. But ${owedToMe.map(p=>`<b>${esc(p.from)}</b> owe${plural(p.from)?'':'s'} you ${rupees(p.amt)}`).join(' and ')}. Instead of paying you, they pay that straight to ${pays.map(t=>esc(t.to)).join(' and ')} — so you only pay the difference.</div>`;
-  }else if(net>0.009 && iOwe.length){
-    h+=`<div class="note">You also owed ${iOwe.map(p=>`${esc(p.to)} ${rupees(p.amt)}`).join(' and ')}. That's already taken off what you get back, so you don't pay it separately.</div>`;
+  const R=t=>rs(Math.round(t.amt*fx()));
+  const cls = r.net<0 ? '' : r.net>0 ? ' good' : ' even';
+  let h=`<div class="hero${cls}"><div class="hd"><b class="fam-name">${F}</b>${isMe?'<span class="you">You</span>':''}</div>
+    <div class="small muted">${d.members.map(esc).join(', ')}</div>`;
+  if(r.net<0){
+    h+=`<div class="big">${pl?'Pay':'Pays'} ${rs(-r.net)}<small>${sgd(-d.net)}</small></div>
+      ${pays.map(t=>`<div class="to">→ to <b>${esc(t.to)}</b>${pays.length>1?` <span class="num">${R(t)}</span>`:''}</div>`).join('')}`;
+  }else if(r.net>0){
+    h+=`<div class="big">${pl?'Get':'Gets'} back ${rs(r.net)}<small>${sgd(d.net)}</small></div>
+      ${gets.map(t=>`<div class="to">← from <b>${esc(t.from)}</b> <span class="num">${R(t)}</span></div>`).join('')}
+      <div class="small">Nothing to pay.</div>`;
+  }else{
+    h+=`<div class="big">All square</div><div class="small">Nothing to pay, nothing to collect.</div>`;
   }
-  // bill by bill, for anyone who wants to check
+  h+=`<div class="math"><div><span>Share of all bills</span><span>${rs(r.share)}</span></div>
+      <div><span>Minus what they already paid</span><span>− ${rs(r.paid)}</span></div>
+      <div class="res"><span>${r.net<0?'Still to pay':r.net>0?'To get back':'Difference'}</span><span>${rs(Math.abs(r.net))}</span></div></div>`;
+  // Explain combined payments, so nobody is surprised that money "skips" a family.
+  const toMe=c.pairs.filter(p=>p.to===fam), fromMe=c.pairs.filter(p=>p.from===fam);
+  const notes=[];
+  if(r.net<0){
+    const passedIn=toMe.filter(p=>!gets.some(t=>t.from===p.from));
+    if(passedIn.length) notes.push(`Why not ${rs(Math.round(sum(fromMe)*fx()))}? That's what ${F} ${pl?'owe':'owes'} for bills other families paid. But ${passedIn.map(p=>`${esc(p.from)} owe${plural(p.from)?'':'s'} ${F} ${rs(Math.round(p.amt*fx()))}`).join(' and ')}, and pay${passedIn.length>1||plural(passedIn[0].from)?'':'s'} it straight to ${pays.map(t=>esc(t.to)).join(' and ')} instead. So ${F} only ${pl?'pay':'pays'} the difference.`);
+    const passedOut=fromMe.filter(p=>!pays.some(t=>t.to===p.to));
+    if(passedOut.length) notes.push(`This includes ${passedOut.map(p=>`${rs(Math.round(p.amt*fx()))} ${F} owe${pl?'':'s'} ${esc(p.to)}`).join(' and ')}. Instead of paying ${passedOut.map(p=>esc(p.to)).join(' and ')}, ${pl?'they pay':'it pays'} it straight to ${pays.map(t=>esc(t.to)).join(' and ')}. One payment fewer, same total.`);
+  }else if(r.net>0){
+    const offset=fromMe.filter(p=>p.amt>0.009);
+    const extra=gets.map(t=>{ const own=(c.pairs.find(p=>p.from===t.from&&p.to===fam)||{amt:0}).amt; return {t, passed:t.amt-own}; }).filter(x=>x.passed>0.009);
+    extra.forEach(({t,passed})=>{ const via=c.pairs.filter(p=>p.from===t.from&&p.to!==fam).map(p=>esc(p.to)); notes.push(`${esc(t.from)}'s ${rs(Math.round(t.amt*fx()))} includes ${rs(Math.round(passed*fx()))} ${plural(t.from)?'they':'it'} owed ${via.join(' and ')||'another family'}, passed on to ${F}. That's why ${via.join(' and ')||'they'} ${via.length===1&&!plural(via[0])?'pays':'pay'} ${F} less.`); });
+    if(offset.length) notes.push(`${F} also owed ${offset.map(p=>`${esc(p.to)} ${rs(Math.round(p.amt*fx()))}`).join(' and ')}. That's already taken off, so there's nothing to pay separately.`);
+  }
+  if(notes.length) h+=`<div class="note">${notes.join('<br><br>')}</div>`;
   const bills=famBills(fam);
   h+=`<details><summary class="link" style="list-style:none;cursor:pointer">Check it bill by bill (${bills.length})</summary><div class="bills">
-    <div class="bill"><span class="small muted">Bill</span><span class="small muted">Your share · You paid</span></div>`+
+    <div class="bill"><span class="small muted">Bill</span><span class="small muted">Share · paid</span></div>`+
     bills.map(b=>`<div class="bill"><span>${esc(b.title)}<small>${shortDate(b.date)} · ${esc(b.paidBy)} paid ${sgd(b.total)} · for ${esc(b.who.join(', ')||'others')}</small></span><span>${sgd(b.share)}${b.paid?`<small>paid ${sgd(b.paid)}</small>`:''}</span></div>`).join('')+
     `<div class="bill total"><span>Total</span><span>${sgd(d.share)}<small>paid ${sgd(d.paid)}</small></span></div></div></details></div>`;
   return h;
 }
 function renderBal(){
-  const v=$('#v-bal'); const c=compute(); const fam=myFamily();
-  let html='';
+  const v=$('#v-bal'); const c=compute(); const mine=myFamily();
   if(!S.expenses.length){ v.innerHTML=`<div class="card"><h2>Settle up</h2><p class="muted small">Nothing to settle yet.</p></div>`; return; }
-  html+=`<div class="card">`;
-  html+= fam ? heroCard(c,fam)
-    : `<div class="hero even"><div class="big" style="font-size:1.4rem">Who are you?</div><div class="small">Pick your name on the People tab and this screen will show exactly what your family pays or gets back.</div><button type="button" class="btn primary" data-v="people" id="b-who">Choose my name</button></div>`;
-  html+=`</div>`;
-  // everyone's payments, as a numbered checklist
-  html+=`<div class="card"><h2>Everyone's payments</h2>
-    <p class="small muted">${c.transfers.length?`Just ${c.transfers.length} payment${c.transfers.length>1?'s':''} settle the whole trip.`:'All square. Nobody owes anything.'}</p>`;
+  const n=c.transfers.length;
+  // the whole plan in one glance
+  let html=`<div class="card"><h2>Settle up</h2>
+    <p class="small">${n?`<b>${n} payment${n>1?'s':''}</b> settle the whole trip. Once ${n>1?'they are':'it is'} paid, every family is square.`:'All square. Nobody owes anything.'}</p>`;
   c.transfers.forEach((t,i)=>{
-    const mine = fam && (t.from===fam || t.to===fam);
-    html+=`<div class="pay${mine?' mine':''}"><span class="n">${i+1}</span><span><b>${esc(t.from)}</b> ${pays_(t.from)} <b>${esc(t.to)}</b>${mine?'<br><span class="small muted">This one is yours</span>':''}</span><span class="a">${rupees(t.amt)}<small>${sgd(t.amt)}</small></span></div>`;
+    const me = mine && (t.from===mine || t.to===mine);
+    html+=`<div class="pay${me?' mine':''}"><span class="n">${i+1}</span><span><b>${esc(t.from)}</b> ${pays_(t.from)} <b>${esc(t.to)}</b></span><span class="a">${rs(Math.round(t.amt*fx()))}<small>${sgd(t.amt)}</small></span></div>`;
   });
-  html+=`<button type="button" class="btn ghost" id="b-copy">Copy for WhatsApp</button>
-    <div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
-    <button type="button" class="btn ghost" id="b-fx-save">Update</button></div></div>`;
-  // the raw numbers, for the curious
-  html+=`<details class="card"><summary style="cursor:pointer;font-weight:600">Every family's numbers</summary>`;
-  for(const [f,d] of Object.entries(c.F)){
-    const r=famRupees(c,f);
-    const pill = r.net>0 ? `<span class="pill good">gets back ${rs(r.net)}</span>` : r.net<0 ? `<span class="pill bad">pays ${rs(-r.net)}</span>` : `<span class="pill even">square</span>`;
-    html+=`<div class="fam-card"><div class="hd"><b>${esc(f)}</b>${pill}</div>
-      <div class="kv"><span>Share of bills <b>${rs(r.share)}</b></span><span>Already paid <b>${rs(r.paid)}</b></span></div>
-      <div class="small muted">${d.members.map(esc).join(', ')}</div></div>`;
-  }
-  html+=`<p class="small muted">Trip total ${rupees(c.total)} (${sgd(c.total)}). Rupee amounts use ₹${fx()} per SGD.</p></details>`;
+  html+=`<button type="button" class="btn ghost" id="b-copy">Copy for WhatsApp</button></div>`;
+  // one card per family, debtors first; the viewer's family on top
+  const fams=Object.keys(c.F).sort((a,b)=>(b===mine)-(a===mine) || famRupees(c,a).net-famRupees(c,b).net);
+  html+=`<h2 class="day" style="margin:8px 2px 0">Each family</h2>`;
+  fams.forEach(f=>{ html+=`<div class="card">${famCard(c,f,f===mine)}</div>`; });
+  html+=`<div class="card"><div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
+    <button type="button" class="btn ghost" id="b-fx-save">Update</button></div>
+    <p class="small muted">Trip total ${rs(Math.round(c.total*fx()))} (${sgd(c.total)}). ${mine?'':'Pick your name on the People tab to see your family first.'}</p></div>`;
   v.innerHTML=html;
 }
 async function saveConfig(cfg, msg){
@@ -923,7 +925,6 @@ document.addEventListener('click', async ev=>{
       t.disabled=true; const ok=await saveConfig({...S.config, fx:Math.round(n*100)/100}, `Rate: ₹${n}/SGD`); t.disabled=false;
       if(ok){ toast('Rate updated'); renderAll(); } return;
     }
-    case 'b-who': return setView('people');
     case 'b-copy': return copyText(summaryText(compute()), 'Summary copied — paste it in WhatsApp');
     case 'p-copy': return copyText(shareLink(), 'Link copied — paste it in WhatsApp');
     case 'p-add': {
