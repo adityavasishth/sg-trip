@@ -1,0 +1,23 @@
+{
+ "id": "mw7nfmmcncmxw",
+ "title": "Singapore River Cruise",
+ "amount": 322,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Sayan": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-08",
+ "photo": "photos/mw7nfmmcncmxw-mw7nfmot.jpg",
+ "createdAt": 1794131271278,
+ "updatedAt": 1794131271278,
+ "addedBy": "Sayan"
+}
