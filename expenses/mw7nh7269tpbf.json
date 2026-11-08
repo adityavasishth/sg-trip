@@ -1,0 +1,19 @@
+{
+ "id": "mw7nh7269tpbf",
+ "title": "Tea snacke",
+ "amount": 11,
+ "currency": "SGD",
+ "paidBy": "Aditya",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Kavya": 1,
+  "Shilp": 1,
+  "Sayan": 1
+ },
+ "date": "2026-11-08",
+ "photo": null,
+ "createdAt": 1794131341566,
+ "updatedAt": 1794131341566,
+ "addedBy": null
+}
