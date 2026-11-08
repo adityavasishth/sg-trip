@@ -116,6 +116,15 @@ input:focus,select:focus{border-color:var(--accent);outline:none}
 .xfer .amt{grid-row:1/3;grid-column:2;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
 .xfer .amt small{display:block;font-weight:400;color:var(--muted)}
 .xfer .sub{font-size:.82rem;color:var(--muted)}
+.xfer details{grid-column:1/-1;margin-top:6px;font-size:.85rem}
+.xfer summary{font-weight:600;color:var(--accent);padding:4px 0}
+.bills{display:grid;gap:2px;margin-top:6px}
+.bill{display:grid;grid-template-columns:1fr auto;gap:8px;padding:6px 0;border-top:1px solid var(--line)}
+.bill span:last-child{font-variant-numeric:tabular-nums;font-weight:600;text-align:right}
+.bill small{display:block;color:var(--muted);font-weight:400}
+.bill.minus span:last-child{color:var(--good)}
+.bill.total{font-weight:700;border-top:2px solid var(--ink)}
+.edit-banner{background:var(--accent-soft);border-radius:10px;padding:10px 12px;font-size:.88rem}
 .fam-card{display:grid;gap:6px;padding:12px 0;border-top:1px solid var(--line)}
 .fam-card:first-of-type{border-top:0;padding-top:0}
 .fam-card .hd{display:flex;justify-content:space-between;gap:8px;align-items:center}
@@ -197,6 +206,7 @@ code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:.85em}
   <section id="v-add" class="view" hidden>
     <form id="f" class="card" novalidate>
       <h2 id="f-heading">Add an expense</h2>
+      <p id="f-editnote" class="edit-banner" hidden></p>
       <div class="field">
         <label for="f-title">What was it?</label>
         <input id="f-title" type="text" autocomplete="off" placeholder="Dinner at Lau Pa Sat">
@@ -356,18 +366,24 @@ function compute(){
   }
   for(const f of Object.values(F)) f.net=f.paid-f.share;
   // family-by-family: what each family owes each other family directly, netted per pair
-  const D={};
+  const D={}, DI={};
   for(const e of S.expenses){
     const amt=toSGD(e); if(!isFinite(amt)) continue;
     const entries=Object.entries(e.split||{});
     const W=entries.reduce((a,[,w])=>a+Number(w),0); if(W<=0) continue;
     const pf=familyOf(e.paidBy);
-    for(const [n,w] of entries){ const f=familyOf(n); if(f===pf) continue; const k=f+'\u0000'+pf; D[k]=(D[k]||0)+amt*Number(w)/W; }
+    const per={};
+    for(const [n,w] of entries){ const f=familyOf(n); if(f===pf) continue; per[f]=(per[f]||0)+amt*Number(w)/W; }
+    for(const [f,x] of Object.entries(per)){ const k=f+'\u0000'+pf; D[k]=(D[k]||0)+x; (DI[k]=DI[k]||[]).push({title:e.title,date:e.date,paidBy:e.paidBy,amt:x,total:amt,people:Object.keys(e.split||{}).filter(n=>familyOf(n)===f)}); }
   }
   const fams=Object.keys(F), pairs=[];
   for(let i=0;i<fams.length;i++) for(let j=i+1;j<fams.length;j++){
     const a=fams[i], b=fams[j], x=(D[a+'\u0000'+b]||0)-(D[b+'\u0000'+a]||0);
-    if(Math.abs(x)>0.009) pairs.push(x>0?{from:a,to:b,amt:x}:{from:b,to:a,amt:-x});
+    if(Math.abs(x)>0.009){
+      const [from,to]= x>0 ? [a,b] : [b,a];
+      const byDate=(p,q)=>(p.date||'').localeCompare(q.date||'');
+      pairs.push({from,to,amt:Math.abs(x),plus:(DI[from+'\u0000'+to]||[]).slice().sort(byDate),minus:(DI[to+'\u0000'+from]||[]).slice().sort(byDate)});
+    }
   }
   pairs.sort((p,q)=>q.amt-p.amt);
   return {total,P,F,transfers:settle(F),pairs};
@@ -469,6 +485,7 @@ async function refresh(force, quiet){
 
 // ---------- views ----------
 function setView(v){
+  if(v!=='add' && S.editing) resetForm();   // never leave a half-finished edit behind (it once overwrote another bill)
   S.view=v; store.set('sg_view',v);
   ['add','list','bal','people'].forEach(x=>{ $('#v-'+x).hidden = x!==v; });
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on', b.dataset.v===v));
@@ -523,6 +540,9 @@ function renderPreview(){
 function renderForm(){
   renderPaidBy(); renderSplit();
   $('#f-heading').textContent = S.editing ? 'Edit expense' : 'Add an expense';
+  const bn=$('#f-editnote');
+  if(S.editing){ bn.hidden=false; bn.innerHTML=`You are changing <b>${esc(S.editing.title)}</b> (${esc(S.editing.paidBy)} paid ${S.editing.currency==='INR'?'₹'+S.editing.amount:sgd(S.editing.amount)}). To add a new bill instead, tap Cancel.`; }
+  else { bn.hidden=true; bn.innerHTML=''; }
   $('#f-save').textContent = S.editing ? 'Save changes' : 'Save expense';
   $('#f-editbar').hidden = !S.editing;
   document.querySelectorAll('#f-cur button').forEach(b=>b.classList.toggle('on', b.dataset.c===S.cur));
@@ -562,7 +582,7 @@ async function compress(file){
   } finally { URL.revokeObjectURL(url); }
 }
 // ----- receipt reading (Claude API, key stays on this phone) -----
-const APP_VERSION='4 (8 Nov · family-by-family settle-up)';
+const APP_VERSION='5 (8 Nov · bill breakdown, edit fix)';
 const AI_MODEL='claude-haiku-5-5';
 const aiKey = () => store.get('sg_ai_key');
 function ocrMsg(html){ const el=$('#f-ocr'); if(html){ el.innerHTML=html; el.hidden=false; } else { el.hidden=true; el.innerHTML=''; } }
@@ -713,10 +733,27 @@ function summaryText(c){
     settleMode()==='fewest' ? '(fewest payments)' : '(family by family)', ''];
   const list=settleList(c);
   if(!list.length) lines.push('All square — nobody owes anything.');
-  list.forEach(t=>lines.push(`• ${t.from} → ${t.to}: ${sgd(t.amt)} (${inr(t.amt)})`));
+  list.forEach(t=>{
+    lines.push(`• ${t.from} → ${t.to}: ${sgd(t.amt)} (${inr(t.amt)})`);
+    if(t.plus){ t.plus.forEach(b=>lines.push(`   + ${b.title}: ${sgd(b.amt)}`)); t.minus.forEach(b=>lines.push(`   − ${b.title}: ${sgd(b.amt)}`)); }
+  });
   lines.push('');
   for(const [f,v] of Object.entries(c.F)) lines.push(`${f}: paid ${sgd(v.paid)}, share ${sgd(v.share)}`);
   return lines.join('\n');
+}
+const shortDate = d => d ? new Date(d+'T12:00:00').toLocaleDateString('en-SG',{day:'numeric',month:'short'}) : '';
+function billBreakdown(t){
+  const sum=a=>a.reduce((x,b)=>x+b.amt,0);
+  const row=(b,minus)=>`<div class="bill${minus?' minus':''}"><span>${esc(b.title)}<small>${shortDate(b.date)} · ${esc(b.paidBy)} paid ${sgd(b.total)} · for ${esc(b.people.join(', '))}</small></span><span>${minus?'− ':''}${sgd(b.amt)}</span></div>`;
+  let h=`<details><summary>See the bills (${t.plus.length+t.minus.length})</summary><div class="bills">`;
+  h+=`<div class="small muted">${esc(t.from)}'s share of bills ${esc(t.to)} paid</div>`+t.plus.map(b=>row(b,false)).join('');
+  h+=`<div class="bill"><span>Subtotal</span><span>${sgd(sum(t.plus))}</span></div>`;
+  if(t.minus.length){
+    h+=`<div class="small muted" style="margin-top:8px">Minus ${esc(t.to)}'s share of bills ${esc(t.from)} paid</div>`+t.minus.map(b=>row(b,true)).join('');
+    h+=`<div class="bill minus"><span>Subtotal</span><span>− ${sgd(sum(t.minus))}</span></div>`;
+  }
+  h+=`<div class="bill total"><span>${esc(t.from)} pays ${esc(t.to)}</span><span>${sgd(t.amt)}</span></div></div></details>`;
+  return h;
 }
 function renderBal(){
   const v=$('#v-bal'); const c=compute();
@@ -727,7 +764,7 @@ function renderBal(){
   if(!S.expenses.length) html+=`<p class="muted small">Nothing to settle yet.</p>`;
   else if(!list.length) html+=`<p class="muted small">All square. Nobody owes anything.</p>`;
   else list.forEach(t=>{
-    html+=`<div class="xfer"><div class="who">${esc(t.from)} → ${esc(t.to)}</div><div class="amt">${sgd(t.amt)}<small>${inr(t.amt)}</small></div><div class="sub">${esc(t.from)} pays ${esc(t.to)}</div></div>`;
+    html+=`<div class="xfer"><div class="who">${esc(t.from)} → ${esc(t.to)}</div><div class="amt">${sgd(t.amt)}<small>${inr(t.amt)}</small></div><div class="sub">${esc(t.from)} pays ${esc(t.to)}</div>${t.plus?billBreakdown(t):''}</div>`;
   });
   html+=`<div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
     <button type="button" class="btn ghost" id="b-fx-save">Update</button></div>
