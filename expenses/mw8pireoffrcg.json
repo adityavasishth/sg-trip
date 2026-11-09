@@ -1,23 +1,18 @@
 {
  "id": "mw8pireoffrcg",
  "title": "Popcorn at USS",
- "amount": 42.0,
+ "amount": 42,
  "currency": "SGD",
  "paidBy": "Aditya",
  "split": {
-  "Aditya": 1,
-  "Garima": 1,
   "Arin": 1,
-  "Shreyan": 1,
-  "Kavya": 1,
   "Ahana": 1,
-  "Jia": 1,
-  "Sayan": 1,
-  "Shilp": 1
+  "Shreyan": 1,
+  "Jia": 1
  },
  "date": "2026-11-09",
  "photo": null,
  "createdAt": 1794195240000,
- "updatedAt": 1794195240000,
- "addedBy": "Aditya"
+ "updatedAt": 1794232921552,
+ "addedBy": null
 }
