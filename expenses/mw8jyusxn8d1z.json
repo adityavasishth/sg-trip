@@ -1,0 +1,23 @@
+{
+ "id": "mw8jyusxn8d1z",
+ "title": "Dinner at Arab street",
+ "amount": 290,
+ "currency": "SGD",
+ "paidBy": "Aditya",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Sayan": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-09",
+ "photo": null,
+ "createdAt": 1794185913201,
+ "updatedAt": 1794185913201,
+ "addedBy": null
+}
