@@ -1,0 +1,18 @@
+{
+ "id": "mw900ai88ahk8",
+ "title": "Morning Tea",
+ "amount": 10,
+ "currency": "SGD",
+ "paidBy": "Aditya",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Kavya": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-09",
+ "photo": null,
+ "createdAt": 1794212854064,
+ "updatedAt": 1794212854064,
+ "addedBy": null
+}
