@@ -1,7 +1,7 @@
 {
  "id": "mw93cg2oiw9fa",
  "title": "SuperHungry at USS",
- "amount": 12.0,
+ "amount": 12,
  "currency": "SGD",
  "paidBy": "Aditya",
  "split": {
@@ -12,12 +12,11 @@
   "Kavya": 1,
   "Ahana": 1,
   "Jia": 1,
-  "Sayan": 1,
   "Shilp": 1
  },
  "date": "2026-11-09",
  "photo": null,
  "createdAt": 1794218460000,
- "updatedAt": 1794218460000,
- "addedBy": "Aditya"
+ "updatedAt": 1794290215026,
+ "addedBy": null
 }
