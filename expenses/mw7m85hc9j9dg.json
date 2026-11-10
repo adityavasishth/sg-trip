@@ -1,0 +1,20 @@
+{
+ "id": "mw7m85hc9j9dg",
+ "title": "Ya Kun Kaya Toast, Clarke Quay (5:14 PM)",
+ "amount": 2.2,
+ "currency": "SGD",
+ "paidBy": "Aditya",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1
+ },
+ "date": "2026-11-08",
+ "photo": null,
+ "createdAt": 1794129240000,
+ "updatedAt": 1794129240000,
+ "addedBy": "Aditya"
+}
