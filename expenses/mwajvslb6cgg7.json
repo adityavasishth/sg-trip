@@ -1,0 +1,17 @@
+{
+ "id": "mwajvslb6cgg7",
+ "title": "McDonald 2 at airport",
+ "amount": 1124,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Arin": 1,
+  "Shreyan": 1,
+  "Jia": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794306702719,
+ "updatedAt": 1794306702719,
+ "addedBy": null
+}
