@@ -1,0 +1,23 @@
+{
+ "id": "mwak1uddiy7gg",
+ "title": "Grab to airport",
+ "amount": 5967,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Sayan": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794306984961,
+ "updatedAt": 1794306984961,
+ "addedBy": null
+}
