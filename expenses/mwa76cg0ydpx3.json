@@ -1,0 +1,18 @@
+{
+ "id": "mwa76cg0ydpx3",
+ "title": "Lunch at Casa Bites (HDFC card, 12:36 PM)",
+ "amount": 4274.68,
+ "currency": "INR",
+ "paidBy": "Aditya",
+ "split": {
+  "Aditya": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Ahana": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794285360000,
+ "updatedAt": 1794285360000,
+ "addedBy": "Aditya"
+}

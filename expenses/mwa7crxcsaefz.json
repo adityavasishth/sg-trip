@@ -1,0 +1,17 @@
+{
+ "id": "mwa7crxcsaefz",
+ "title": "Ya Kun Kaya Toast, Clarke Quay (HDFC card, 12:41 PM)",
+ "amount": 1311.88,
+ "currency": "INR",
+ "paidBy": "Aditya",
+ "split": {
+  "Garima": 1,
+  "Kavya": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794285660000,
+ "updatedAt": 1794285660000,
+ "addedBy": "Aditya"
+}
