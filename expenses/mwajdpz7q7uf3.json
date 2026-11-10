@@ -1,0 +1,19 @@
+{
+ "id": "mwajdpz7q7uf3",
+ "title": "Juice at Clarke Quay",
+ "amount": 15,
+ "currency": "SGD",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Jia": 1,
+  "Ahana": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794305859524,
+ "updatedAt": 1794305859524,
+ "addedBy": "Sayan"
+}
