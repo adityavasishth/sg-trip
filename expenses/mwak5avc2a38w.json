@@ -1,0 +1,19 @@
+{
+ "id": "mwak5avc2a38w",
+ "title": "Lunch in universal",
+ "amount": 4219,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Jia": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794307146312,
+ "updatedAt": 1794307146312,
+ "addedBy": null
+}
