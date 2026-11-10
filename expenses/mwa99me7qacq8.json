@@ -1,0 +1,22 @@
+{
+ "id": "mwa99me7qacq8",
+ "title": "Universal base ticket",
+ "amount": 45933,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-09",
+ "photo": null,
+ "createdAt": 1794288872095,
+ "updatedAt": 1794288872095,
+ "addedBy": null
+}
