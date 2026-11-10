@@ -1,7 +1,7 @@
 {
  "id": "mw8qcc802x10p",
  "title": "Mel's Drive-In at USS",
- "amount": 36.0,
+ "amount": 36,
  "currency": "SGD",
  "paidBy": "Aditya",
  "split": {
@@ -12,12 +12,11 @@
   "Kavya": 1,
   "Ahana": 1,
   "Jia": 1,
-  "Sayan": 1,
   "Shilp": 1
  },
  "date": "2026-11-09",
  "photo": null,
  "createdAt": 1794196620000,
- "updatedAt": 1794196620000,
- "addedBy": "Aditya"
+ "updatedAt": 1794290016353,
+ "addedBy": null
 }
