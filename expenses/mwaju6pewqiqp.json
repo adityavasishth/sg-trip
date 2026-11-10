@@ -1,0 +1,18 @@
+{
+ "id": "mwaju6pewqiqp",
+ "title": "McDonald 1 at airport",
+ "amount": 3666,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Shreyan": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Arin": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794306627698,
+ "updatedAt": 1794306627698,
+ "addedBy": null
+}
