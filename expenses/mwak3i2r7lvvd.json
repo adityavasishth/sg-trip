@@ -1,0 +1,22 @@
+{
+ "id": "mwak3i2r7lvvd",
+ "title": "Grab from universal to hotel",
+ "amount": 4827,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Aditya": 1,
+  "Garima": 1,
+  "Arin": 1,
+  "Shreyan": 1,
+  "Kavya": 1,
+  "Ahana": 1,
+  "Jia": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794307062339,
+ "updatedAt": 1794307062339,
+ "addedBy": null
+}
