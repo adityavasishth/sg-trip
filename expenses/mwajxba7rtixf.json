@@ -1,0 +1,17 @@
+{
+ "id": "mwajxba7rtixf",
+ "title": "Din tai fung lunch at airport",
+ "amount": 4295,
+ "currency": "INR",
+ "paidBy": "Sayan",
+ "split": {
+  "Garima": 1,
+  "Kavya": 1,
+  "Shilp": 1
+ },
+ "date": "2026-11-10",
+ "photo": null,
+ "createdAt": 1794306773599,
+ "updatedAt": 1794306773599,
+ "addedBy": null
+}
