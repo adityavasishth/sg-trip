@@ -1,7 +1,7 @@
 {
  "id": "mw8thiaoyk442",
  "title": "Locker at USS",
- "amount": 5.0,
+ "amount": 5,
  "currency": "SGD",
  "paidBy": "Aditya",
  "split": {
@@ -12,12 +12,11 @@
   "Kavya": 1,
   "Ahana": 1,
   "Jia": 1,
-  "Sayan": 1,
   "Shilp": 1
  },
  "date": "2026-11-09",
  "photo": null,
  "createdAt": 1794201900000,
- "updatedAt": 1794201900000,
- "addedBy": "Aditya"
+ "updatedAt": 1794290141183,
+ "addedBy": null
 }
