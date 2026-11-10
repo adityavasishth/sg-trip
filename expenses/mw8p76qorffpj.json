@@ -1,7 +1,7 @@
 {
  "id": "mw8p76qorffpj",
  "title": "USS tickets",
- "amount": 600.0,
+ "amount": 600,
  "currency": "SGD",
  "paidBy": "Aditya",
  "split": {
@@ -12,12 +12,11 @@
   "Kavya": 1,
   "Ahana": 1,
   "Jia": 1,
-  "Sayan": 1,
   "Shilp": 1
  },
  "date": "2026-11-09",
  "photo": null,
  "createdAt": 1794194700000,
- "updatedAt": 1794194700000,
- "addedBy": "Aditya"
+ "updatedAt": 1794289353464,
+ "addedBy": null
 }
