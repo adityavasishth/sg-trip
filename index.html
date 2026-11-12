@@ -177,6 +177,10 @@ th{color:var(--muted);font-weight:500}
 .person .x{border:0;background:none;color:var(--muted);cursor:pointer;font-size:1.2rem}
 .person-head{font-size:.78rem;color:var(--muted)}
 
+.ro-banner{display:grid;gap:4px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:var(--r);padding:14px 16px;font-size:.92rem}
+.ro-banner b{font-family:var(--display);font-size:1.05rem}
+body.ro .tabs{grid-template-columns:repeat(3,1fr)}
+body.ro .tabs button[data-v="add"]{display:none}
 .tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;display:grid;grid-template-columns:repeat(4,1fr);
   background:var(--surface);border-top:1px solid var(--line);padding:6px 6px calc(6px + env(safe-area-inset-bottom))}
 .tabs button{border:0;background:none;padding:8px 4px;border-radius:10px;font-weight:600;font-size:.82rem;color:var(--muted);cursor:pointer;display:grid;justify-items:center;gap:2px}
@@ -209,6 +213,10 @@ code{background:var(--bg);padding:1px 5px;border-radius:5px;font-size:.85em}
 </header>
 
 <main>
+  <div id="ro-banner" class="ro-banner" hidden>
+    <b>The Singapore trip is over. Hope you all had a happy trip! 🌴</b>
+    <span>This page is now read-only. You can still see every expense, receipt and the final balances, but nothing can be added or changed.</span>
+  </div>
   <!-- SETUP -->
   <section id="v-setup" class="view" hidden>
     <div class="card">
@@ -467,13 +475,17 @@ async function pool(items,n,fn){
   }));
   return res;
 }
+// The trip is over: the app is view-only. Set to false to allow changes again.
+const READ_ONLY = true;
 async function putFile(path, content64, sha, message){
+  if(READ_ONLY) throw new Error('This trip is closed. The app is now view-only.');
   const body={message, content:content64, branch:BRANCH};
   if(sha) body.sha=sha;
   const j=await (await gh(`/repos/${REPO}/contents/${path}`,{method:'PUT',body})).json();
   return j.content.sha;
 }
 async function delFile(path, sha, message){
+  if(READ_ONLY) throw new Error('This trip is closed. The app is now view-only.');
   await gh(`/repos/${REPO}/contents/${path}`,{method:'DELETE',body:{message, sha, branch:BRANCH}});
 }
 function normalizeConfig(c){
@@ -516,6 +528,7 @@ async function refresh(force, quiet){
 
 // ---------- views ----------
 function setView(v){
+  if(READ_ONLY && v==='add') v='bal';
   if(v!=='add' && S.editing) resetForm();   // never leave a half-finished edit behind (it once overwrote another bill)
   S.view=v; store.set('sg_view',v);
   ['add','list','bal','people'].forEach(x=>{ $('#v-'+x).hidden = x!==v; });
@@ -529,6 +542,7 @@ function showSetup(err){
 }
 function showApp(){
   $('#v-setup').hidden=true; $('#tabs').hidden=false;
+  if(READ_ONLY){ document.body.classList.add('ro'); $('#ro-banner').hidden=false; }
   setView(S.view);
 }
 function renderSub(){
@@ -588,6 +602,7 @@ function resetForm(){
 }
 function startEdit(id){
   const e=S.expenses.find(x=>x.id===id); if(!e) return;
+  if(READ_ONLY){ if(e.photo) openPhoto(e.photo); else toast('The trip is over, so expenses can no longer be changed.'); return; }
   S.editing=e; S.cur=e.currency||'SGD'; S.photoFile=null; S.photoB64=null; S.photoRemoved=false; ocrMsg(null);
   S.split=new Set(Object.keys(e.split||{}));
   $('#f-title').value=e.title||''; $('#f-amt').value=e.amount; $('#f-date').value=e.date||today();
@@ -613,7 +628,7 @@ async function compress(file){
   } finally { URL.revokeObjectURL(url); }
 }
 // ----- receipt reading (Claude API, key stays on this phone) -----
-const APP_VERSION='5 (8 Nov · bill breakdown, edit fix)';
+const APP_VERSION='6 (12 Nov · trip closed, read-only)';
 const AI_MODEL='claude-haiku-5-5';
 const aiKey = () => store.get('sg_ai_key');
 function ocrMsg(html){ const el=$('#f-ocr'); if(html){ el.innerHTML=html; el.hidden=false; } else { el.hidden=true; el.innerHTML=''; } }
@@ -730,7 +745,7 @@ const photoIcon='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" str
 function renderList(){
   const v=$('#v-list'); const c=compute();
   let html=`<div class="tiles"><div class="tile"><span>Trip total</span><b>${sgd(c.total)}</b><small>${inr(c.total)}</small></div>
-    <div class="tile"><span>Expenses logged</span><b>${S.expenses.length}</b><small>tap one to edit</small></div></div>`;
+    <div class="tile"><span>Expenses logged</span><b>${S.expenses.length}</b><small>${READ_ONLY?'tap one to see its receipt':'tap one to edit'}</small></div></div>`;
   if(!S.expenses.length){
     html+=`<div class="card empty">No expenses yet. Add the first one from the <b>Add</b> tab.</div>`;
   } else {
@@ -887,7 +902,7 @@ function renderBal(){
   const order=fams.slice().sort((a,b)=>(b===mine)-(a===mine) || (M.net[a]||0)-(M.net[b]||0));
   html+=`<h2 class="day" style="margin:8px 2px 0">Each family</h2>`;
   order.forEach(f=>{ html+=`<div class="card">${famCard(c,M,f,f===mine)}</div>`; });
-  html+=`<div class="card"><div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
+  html+= READ_ONLY ? `<div class="card"><p class="small muted">Final exchange rate used: ₹${fx()} per SGD.</p>` : `<div class="card"><div class="row"><div class="field grow"><label for="b-fx">Exchange rate (₹ per SGD)</label><input id="b-fx" type="text" inputmode="decimal" class="num" value="${fx()}"></div>
     <button type="button" class="btn ghost" id="b-fx-save">Update</button></div>
     <p class="small muted">Trip total ${rs(c.total*fx())} (${sgd(c.total)}). ${mine?'':'Pick your name on the People tab to see your family first.'}</p></div>`;
   v.innerHTML=html;
@@ -908,7 +923,19 @@ async function saveConfig(cfg, msg){
 
 // ----- people -----
 function shareLink(){ return location.origin + location.pathname + '#k=' + encodeURIComponent(S.token||''); }
+function renderPeopleRO(){
+  let html=`<div class="card"><h2>Share this trip</h2>
+    <p class="small muted">The link still opens the final, read-only summary.</p>
+    <button type="button" class="btn primary" id="p-copy">Copy share link</button>
+    <div class="field"><label for="p-me">On this phone, I am</label><select id="p-me"><option value="">Choose your name</option>${people().map(p=>`<option value="${esc(p.name)}"${p.name===S.me?' selected':''}>${esc(p.name)}</option>`).join('')}</select></div>
+    <p class="small muted">Shows your family first on the Balances tab.</p></div>
+    <div class="card"><h2>People &amp; families</h2>`;
+  for(const [f,members] of families()) html+=`<div class="fam-card"><b>${esc(f)}</b><div class="small muted">${members.map(n=>esc(n)+(weightOf(n)!==1?` (share ${weightOf(n)})`:'')).join(', ')}</div></div>`;
+  html+=`<p class="small muted">App version: ${APP_VERSION} · read-only</p></div>`;
+  $('#v-people').innerHTML=html;
+}
 function renderPeople(){
+  if(READ_ONLY) return renderPeopleRO();
   const v=$('#v-people');
   const draft=S.draftPeople || JSON.parse(JSON.stringify(people()));
   S.draftPeople=draft;
@@ -1045,12 +1072,13 @@ async function start(){
   if(S.token && !m) history.replaceState(null,'','#k='+encodeURIComponent(S.token));
   S.me=store.get('sg_me');
   const sv=store.get('sg_view'); if(['add','list','bal','people'].includes(sv)) S.view=sv;
+  if(READ_ONLY) S.view='bal';
   S.config=normalizeConfig(null);
   if(!S.token){ showSetup(); return; }
   showApp(); resetForm(); renderAll();
   await refresh(true);
   resetForm(); renderAll();
-  if(!S.me && S.token){ setView('people'); toast('Pick your name so "Paid by" fills in for you.', 3500); }
+  if(!S.me && S.token && !READ_ONLY){ setView('people'); toast('Pick your name so "Paid by" fills in for you.', 3500); }
 }
 setInterval(()=>{ if(document.visibilityState==='visible' && S.token && !S.busy && $('#v-setup').hidden) refresh(false,true); }, 30000);
 document.addEventListener('visibilitychange', ()=>{ if(document.visibilityState==='visible' && S.token && $('#v-setup').hidden) refresh(false,true); });
